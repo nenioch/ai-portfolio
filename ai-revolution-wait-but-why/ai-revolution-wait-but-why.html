@@ -1,0 +1,1558 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The AI Revolution – Wait But Why</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Instrument+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Filmisch, schermvullend (opzet als heelal).
+   Diep zwart, goud voor de mens en cyaan voor de machine. */
+:root {
+  --ink: #f4efe4;
+  --muted: rgba(244, 239, 228, 0.68);
+  --dim: rgba(244, 239, 228, 0.45);
+  --accent: #e0a845;
+  --panel: rgba(10, 10, 16, 0.5);
+  --line: rgba(244, 239, 228, 0.14);
+  --display: 'Young Serif', Georgia, 'Times New Roman', serif;
+  --sans: 'Instrument Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --mono: 'IBM Plex Mono', ui-monospace, Consolas, monospace;
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; background: #000; color: var(--ink); font-family: var(--sans); overflow: hidden; }
+
+#scene { position: fixed; inset: 0; width: 100%; height: 100%; display: block; cursor: pointer; }
+
+.overlay { z-index: 3; pointer-events: none; transition: opacity 0.4s; }
+body.clean .overlay { opacity: 0 !important; }
+
+/* ------------------------------------------------------------ kop + klok */
+#kop { position: fixed; top: 20px; left: 24px; text-shadow: 0 1px 10px rgba(0, 0, 0, 0.6); }
+.eyebrow { font: 600 11px/1 var(--sans); letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); }
+.naam { margin-top: 6px; font: 400 18px/1.1 var(--display); color: var(--ink); }
+
+#klok { position: fixed; top: 16px; right: 24px; max-width: 58vw; display: grid; justify-items: end; gap: 6px; text-align: right; text-shadow: 0 1px 12px rgba(0, 0, 0, 0.7); }
+#clock { font: 500 clamp(17px, 2.3vw, 28px)/1.15 var(--mono); font-variant-numeric: tabular-nums; letter-spacing: 0.01em; }
+#scene-no { font: 500 11px/1 var(--mono); letter-spacing: 0.12em; color: var(--muted); text-transform: uppercase; }
+
+/* ------------------------------------------------------------ onderbalk-tekst */
+#lower {
+  position: fixed; left: clamp(16px, 4vw, 56px); bottom: 92px;
+  width: min(520px, calc(100vw - 32px));
+}
+#lower::before {
+  content: ''; display: block; height: 2px; width: 0; margin-bottom: 14px;
+  background: var(--accent); transition: width 0.8s var(--ease);
+}
+#lower.show::before { width: 56px; }
+#lower > * { opacity: 0; transform: translateY(12px); transition: opacity 0.6s, transform 0.7s var(--ease); }
+#lower.show > * { opacity: 1; transform: none; }
+#lower.show #lower-title { transition-delay: 0.1s; }
+#lower.show #lower-txt { transition-delay: 0.25s; }
+#lower.show #lower-fact { transition-delay: 0.45s; }
+#lower-idx { display: block; margin-bottom: 8px; font: 500 11px/1.3 var(--mono); letter-spacing: 0.2em; color: var(--accent); }
+#lower-title { font: 400 clamp(30px, 4.6vw, 54px)/1.02 var(--display); text-wrap: balance; text-shadow: 0 2px 24px rgba(0, 0, 0, 0.55); }
+#lower-txt { margin-top: 12px; font: 400 clamp(14px, 1.35vw, 17px)/1.5 var(--sans); color: var(--ink); text-shadow: 0 1px 14px rgba(0, 0, 0, 0.85); max-width: 60ch; }
+#lower-fact {
+  margin-top: 12px; padding: 9px 12px; font: 400 13px/1.45 var(--sans); color: var(--muted);
+  background: var(--panel); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  border-left: 2px solid var(--accent); max-width: 60ch;
+}
+#lower-fact b { color: var(--ink); font-weight: 600; }
+
+/* ------------------------------------------------------------ bediening */
+#controls {
+  position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%);
+  width: min(860px, calc(100vw - 32px));
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 12px 6px 6px;
+  background: rgba(10, 10, 16, 0.62); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--line); border-radius: 12px;
+  z-index: 5; transition: opacity 0.5s;
+}
+body.idle #controls, body.idle #hint { opacity: 0; }
+body.idle { cursor: none; }
+body.idle #scene { cursor: none; }
+#controls > button {
+  flex: none; width: 34px; height: 34px; border: 0; border-radius: 8px;
+  background: none; color: var(--ink); display: grid; place-items: center; cursor: pointer;
+}
+#controls > button:hover { background: rgba(255, 255, 255, 0.08); }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+button svg { width: 16px; height: 16px; fill: currentColor; }
+#play .i-play { display: none; }
+#play.paused .i-play { display: block; }
+#play.paused .i-pause { display: none; }
+
+#timeline { flex: 1; min-width: 0; display: flex; gap: 3px; height: 26px; align-items: center; margin-left: 6px; }
+.seg { position: relative; flex: 1 1 0; min-width: 0; height: 26px; border: 0; background: none; cursor: pointer; }
+.seg::before { content: ''; position: absolute; left: 0; right: 0; top: 11px; height: 4px; background: rgba(255, 255, 255, 0.18); border-radius: 2px; transition: top 0.2s, height 0.2s; }
+#timeline:hover .seg::before { top: 9.5px; height: 7px; }
+.seg i { position: absolute; left: 0; top: 11px; height: 4px; width: 0; background: var(--ink); border-radius: 2px; transition: top 0.2s, height 0.2s; }
+#timeline:hover .seg i { top: 9.5px; height: 7px; }
+.seg.cur i { background: var(--accent); }
+.seg span {
+  position: absolute; bottom: 28px; left: 50%; transform: translateX(-50%);
+  padding: 4px 7px; border-radius: 4px; background: rgba(0, 0, 0, 0.78); color: var(--ink);
+  font: 500 10px/1 var(--mono); letter-spacing: 0.08em; white-space: nowrap;
+  opacity: 0; pointer-events: none; transition: opacity 0.2s;
+}
+.seg:first-child span { left: 0; transform: none; }
+.seg:last-child span { left: auto; right: 0; transform: none; }
+.seg:hover span, .seg:focus-visible span { opacity: 1; }
+#time { flex: none; min-width: 84px; text-align: right; font: 500 11px/1 var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+
+#hint {
+  position: fixed; right: 24px; bottom: 74px; z-index: 4;
+  font: 400 11px/1.4 var(--mono); letter-spacing: 0.04em; color: var(--dim);
+  pointer-events: none; transition: opacity 0.5s; text-align: right;
+}
+
+/* ------------------------------------------------------------ muziek */
+#mute .i-off { display: none; }
+#mute.off .i-on { display: none; }
+#mute.off .i-off { display: block; }
+#own.active { color: var(--accent); }
+
+#music-tag {
+  position: fixed; right: 24px; bottom: 92px; z-index: 4; max-width: 46vw;
+  font: 500 10px/1.4 var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--dim);
+  text-align: right; text-shadow: 0 1px 10px rgba(0, 0, 0, 0.7);
+}
+body:not(.idle) #music-tag { opacity: 0; }
+
+@media (max-width: 760px) {
+  #hint { display: none; }
+  #music-tag { display: none; }
+  #lower { bottom: 70px; }
+  #lower-txt { font-size: 14px; }
+  #lower-fact { display: none; }
+  #time { display: none; }
+  #kop { display: none; }
+  #klok { right: 16px; top: 12px; max-width: calc(100vw - 32px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  #lower > *, #lower::before { transition-duration: 0.01s !important; }
+}
+
+</style>
+</head>
+<body>
+
+<canvas id="scene" role="img" aria-label="Animatie over de weg naar superintelligentie, naar het artikel van Tim Urban"></canvas>
+
+<header id="kop" class="overlay">
+  <p class="eyebrow">Naar Tim Urban · Wait But Why · 2015</p>
+  <p class="naam">The AI Revolution</p>
+</header>
+
+<div id="klok" class="overlay">
+  <span id="clock">1750</span>
+  <span id="scene-no">scène 1 van 16</span>
+</div>
+
+<section id="lower" class="overlay" aria-live="polite">
+  <span id="lower-idx">01 / 16</span>
+  <h2 id="lower-title"></h2>
+  <p id="lower-txt"></p>
+  <p id="lower-fact"></p>
+</section>
+
+<div id="controls">
+  <button id="prev" type="button" aria-label="Vorige scène">
+    <svg viewBox="0 0 24 24"><path d="M6 5h2v14H6zM20 5v14L9 12z"/></svg>
+  </button>
+  <button id="play" type="button" aria-label="Pauzeren">
+    <svg class="i-pause" viewBox="0 0 24 24"><path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z"/></svg>
+    <svg class="i-play" viewBox="0 0 24 24"><path d="M7 4.5v15L19.5 12z"/></svg>
+  </button>
+  <button id="next" type="button" aria-label="Volgende scène">
+    <svg viewBox="0 0 24 24"><path d="M16 5h2v14h-2zM4 5v14l11-7z"/></svg>
+  </button>
+  <div id="timeline"></div>
+  <span id="time">0:00 / 0:00</span>
+  <button id="mute" type="button" aria-label="Muziek dempen" title="Muziek dempen (M)">
+    <svg class="i-on" viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4zM16 8.5a5 5 0 0 1 0 7l-1.2-1.2a3.3 3.3 0 0 0 0-4.6zM18.5 6a8.5 8.5 0 0 1 0 12l-1.2-1.2a6.8 6.8 0 0 0 0-9.6z"/></svg>
+    <svg class="i-off" viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4zM15.3 9.3l1.2-1.2 2.2 2.2 2.2-2.2 1.2 1.2-2.2 2.2 2.2 2.2-1.2 1.2-2.2-2.2-2.2 2.2-1.2-1.2 2.2-2.2z"/></svg>
+  </button>
+  <button id="own" type="button" aria-label="Eigen muziekbestand kiezen" title="Eigen muziekbestand kiezen">
+    <svg viewBox="0 0 24 24"><path d="M9 4v10.6A3.5 3.5 0 1 0 11 18V8h7V4z"/></svg>
+  </button>
+  <input id="own-file" type="file" accept="audio/*" hidden>
+</div>
+
+<div id="music-tag" class="overlay"></div>
+
+<div id="hint">Klik of spatie pauzeert · ← → scènes · H verbergt de tekst · M dempt de muziek</div>
+
+<audio id="track" src="muziek/soundtrack.mp3" preload="auto" loop></audio>
+<script>
+(() => {
+const SCENES = [
+  { t: '1750', meta: 'een gedachte-experiment', title: 'De tijdreiziger',
+    txt: "Haal iemand uit het jaar 1750 naar vandaag. Hij ziet metalen kokers door de lucht vliegen, praat met mensen aan de andere kant van de oceaan en kijkt naar een wedstrijd die duizenden kilometers verderop gespeeld wordt. Volgens Tim Urban zou hij dat van pure verbijstering misschien niet overleven.",
+    fact: '<b>Die Progress Unit:</b> zo noemt Urban de hoeveelheid vooruitgang waar je van omvalt. Iemand uit 1500 zou van 1750 lang niet zo schrikken. Wil de man uit 1750 zelf iemand zo laten schrikken, dan moet hij terug tot vóór de landbouw, zo’n 12.000 jaar eerder.',
+    marks: [[0, '1750'], [.38, 'door de tijd'], [.55, '2015']] },
+  { t: 'versnelling', meta: 'de wet van de versnellende meeropbrengst', title: 'Steeds sneller',
+    txt: "Vooruitgang versnelt zichzelf: wie verder is, kan sneller nog verder komen. Uitvinder Ray Kurzweil noemt dit de wet van de versnellende meeropbrengst. Zoom in op welk stuk geschiedenis je maar wilt: de laatste stap is telkens de grootste.",
+    fact: '<b>Kurzweil:</b> alle vooruitgang van de hele twintigste eeuw haalden we, in het tempo van het jaar 2000, al in twintig jaar. Hij verwacht dat de 21e eeuw duizend keer zoveel vooruitgang brengt als de twintigste.',
+    marks: [[0, '12.000 v.Chr. → 2015'], [.4, '1750 → 2015'], [.72, '1950 → 2015']] },
+  { t: 'nu', meta: 'hoe we de toekomst inschatten', title: 'Waarom we het niet zien',
+    txt: "We voorspellen de toekomst door terug te kijken, en dan trekken we een rechte lijn. Maar vooruitgang loopt niet recht: de lijn wordt steeds steiler. Wie vanaf vandaag gewoon doortrekt, schat de komende decennia veel te laag in.",
+    fact: '<b>S-curven:</b> elke nieuwe techniek groeit eerst langzaam, dan explosief en vlakt daarna af. Zet je al die S-curven achter elkaar, dan vormen ze samen één steeds steilere lijn.',
+    marks: [[0, 'terugkijken'], [.28, 'wat we verwachten'], [.5, 'wat er gebeurt'], [.72, 'S-curven']] },
+  { t: 'ANI · AGI · ASI', meta: 'drie soorten kunstmatige intelligentie', title: 'Drie niveaus van AI',
+    txt: "Smalle AI (ANI) is goed in één ding, zoals schaken. Algemene AI (AGI) is op alle fronten even slim als een mens: redeneren, plannen, leren van ervaring. Superintelligentie (ASI) is slimmer dan de slimste mensen, op elk gebied, en misschien wel miljoenen keren.",
+    fact: '<b>Het kantelpunt:</b> ANI hebben we al overal. De sprong naar AGI is de moeilijke stap. Volgens Urban kan de stap daarna, van AGI naar ASI, juist verrassend snel gaan.',
+    marks: [[0, 'ANI · smalle AI'], [.33, 'AGI · algemene AI'], [.6, 'ASI · superintelligentie']] },
+  { t: '2015', meta: 'de wereld in 2015', title: 'Smalle AI is overal',
+    txt: "Je merkt het nauwelijks, maar AI draait al overal: de spamfilter in je mailbox, de routeplanner in je auto, de vertaalmachine, de aanbevelingen in webwinkels en de algoritmes die op de beurs handelen. Elk systeem is slim in precies één ding.",
+    fact: '<b>Bouwstenen:</b> elke smalle AI is op zichzelf niet gevaarlijk en niet algemeen slim. Urban vergelijkt ze met de aminozuren in de oersoep: bouwstenen waaruit iets veel groters kan ontstaan.',
+    marks: [[0, '2015'], [.1, 'smalle AI, overal']] },
+  { t: 'paradox', meta: 'waarom AGI zo moeilijk is', title: 'Moeilijk is makkelijk',
+    txt: "Wat voor ons moeilijk is, zoals rekenen met getallen van zeven cijfers, doet een computer in een flits. Wat voor ons kinderspel is, zoals een kat herkennen of over een stoep lopen, is voor een computer juist ontzettend moeilijk. Daar heeft de evolutie honderden miljoenen jaren aan geschaafd.",
+    fact: '<b>Paradox van Moravec:</b> wat we zonder nadenken doen, is het moeilijkst na te bouwen. Daar zit de echte uitdaging van AGI.',
+    marks: [[0, 'rekenen: makkelijk'], [.48, 'een kat zien: moeilijk']] },
+  { t: '10¹⁶', meta: 'rekenkracht per 1000 dollar', title: 'Genoeg rekenkracht',
+    txt: "Een menselijk brein doet volgens schattingen zo’n 10 biljard berekeningen per seconde. De snelste supercomputer haalde dat in 2015 al, maar was gigantisch en peperduur. Voor 1000 dollar kocht je toen ongeveer een duizendste brein. Groeit dat zo door, dan is een heel brein aan rekenkracht rond 2025 voor iedereen betaalbaar.",
+    fact: '<b>Tianhe-2:</b> de Chinese supercomputer haalde zo’n 34 biljard berekeningen per seconde, besloeg 720 m², gebruikte 24 megawatt en kostte 390 miljoen dollar. Een brein werkt op zo’n 20 watt.',
+    marks: [[0, '1975'], [.5, '2015 · een duizendste brein'], [.68, '± 2025 · een heel brein?']] },
+  { t: 'leren', meta: 'hoe maak je een computer slim?', title: 'Een brein bouwen',
+    txt: "Er zijn drie routes. Het brein nabootsen met een netwerk van kunstmatige neuronen dat leert van zijn fouten. De evolutie nadoen: laat duizenden programma’s strijden en houd de beste over. Of de computer zélf het onderzoek laten doen, zodat hij zichzelf verbetert.",
+    fact: '<b>302 neuronen:</b> van een wormpje van 1 millimeter is al lang alle bedrading van het zenuwstelsel in kaart gebracht. Een mensenbrein heeft zo’n 86 miljard neuronen.',
+    marks: [[0, 'het brein nabootsen'], [.52, 'de evolutie nadoen'], [.84, 'zichzelf verbeteren']] },
+  { t: 'snelheid', meta: 'waarom een digitaal brein in het voordeel is', title: 'Sneller dan biologie',
+    txt: "Zelfs met precies dezelfde intelligentie als een mens heeft een computer grote voordelen. Hij rekent miljoenen keren sneller, zijn signalen reizen bijna met de snelheid van het licht, hij vergeet niets, wordt nooit moe en kan zichzelf in een oogwenk kopiëren.",
+    fact: '<b>200 tegen 2 miljard:</b> neuronen vuren hooguit zo’n 200 keer per seconde, een gewone processor tikt 2 miljard keer per seconde. Signalen in je hersenen gaan zo’n 120 meter per seconde.',
+    marks: [[0, 'rekensnelheid'], [.33, 'signaalsnelheid'], [.62, 'kopiëren en samenwerken']] },
+  { t: 'de trap', meta: 'de trap van intelligentie', title: 'Twee treden hoger',
+    txt: "Zet alle soorten op een trap van intelligentie. Een chimpansee staat net onder ons. Hij kan een wolkenkrabber zien, maar nooit begrijpen dat mensen die gebouwd hebben. Een machine die twee treden boven ons staat, zou voor ons net zo onbegrijpelijk zijn. En een superintelligentie staat véél hoger.",
+    fact: '<b>Dorpsgek en Einstein:</b> wij vinden het verschil tussen die twee enorm. Op de trap van alle mogelijke intelligentie staan ze vrijwel naast elkaar.',
+    marks: [[0, 'mier · kip · chimpansee'], [.24, 'mens'], [.42, 'twee treden hoger'], [.7, 'superintelligentie']] },
+  { t: 'explosie', meta: 'zelfverbetering in een kringloop', title: 'De intelligentie-explosie',
+    txt: "Een AI die slim genoeg is om zichzelf te verbeteren, wordt slimmer, en daardoor nog beter in zichzelf verbeteren. Decennialang kruipt hij omhoog: van insect naar muis, van muis naar aap. Dan haalt hij het menselijk niveau, en schiet er in een flits voorbij.",
+    fact: '<b>Urbans scenario:</b> het duurt tientallen jaren voor een AI zo slim is als een kind van vier. Een uur later bedenkt hij een natuurkundige theorie die geen mens kon vinden. Anderhalf uur daarna is hij 170.000 keer zo intelligent als een mens.',
+    marks: [[0, 'decennia: langzaam omhoog'], [.48, 'niveau: kind van vier'], [.62, 'een uur later'], [.78, 'anderhalf uur later · ASI']] },
+  { t: 'de balk', meta: 'uitsterven of onsterfelijkheid', title: 'De evenwichtsbalk',
+    txt: "Elke soort loopt over een smalle balk: hij bestaat een tijdje en valt er dan af, de diepte van het uitsterven in. Dat lot trof 99,9 procent van alle soorten die ooit leefden. Volgens Urban is superintelligentie een struikeldraad op die balk: daarna valt de mensheid voorgoed naar één kant.",
+    fact: '<b>Twee eindtoestanden:</b> uit het uitsterven kom je nooit meer terug. Filosoof Nick Bostrom ziet nog één zo’n eindtoestand: onsterfelijkheid van de soort. Een superintelligentie kan ons naar de ene óf de andere kant duwen.',
+    marks: [[0, 'soorten komen en gaan'], [.3, 'de mensheid op de balk'], [.84, 'het struikeldraad']] },
+  { t: '2040?', meta: 'voorspellingen van AI-experts', title: 'Wanneer?',
+    txt: "In een enquête onder AI-onderzoekers (Müller en Bostrom, 2013) was de mediane schatting: 10 procent kans op AGI in 2022, 50 procent in 2040 en 90 procent in 2075. Ray Kurzweil is optimistischer: AGI in 2029 en een superintelligente singulariteit in 2045.",
+    fact: '<b>Na AGI:</b> volgens dezelfde experts is er 10 procent kans dat ASI binnen 2 jaar na AGI volgt, en 75 procent kans binnen 30 jaar. Het artikel verscheen in januari 2015; de witte lijn markeert vandaag.',
+    marks: [[0, '2015'], [.14, '10% kans op AGI · 2022'], [.26, '50% · 2040'], [.38, '90% · 2075'], [.52, 'Kurzweil: 2029 en 2045'], [.78, 'vandaag']] },
+  { t: 'twee kampen', meta: 'hoop en angst', title: 'Optimisten en zorgenmakers',
+    txt: "In de zelfverzekerde hoek staan denkers als Ray Kurzweil: een superintelligentie lost ziekte, honger en zelfs veroudering op, bijvoorbeeld met nanorobots in ons lichaam. In de bezorgde laan staan onder anderen Nick Bostrom, Elon Musk, Stephen Hawking en Bill Gates. Zij vrezen dat we iets bouwen wat we niet kunnen beheersen.",
+    fact: '<b>En Urban zelf?</b> Hij eindigt in de bezorgde laan: hoopvol over wat er kan, maar ongerust over hoe makkelijk het mis kan gaan.',
+    marks: [[0, 'de zelfverzekerde hoek'], [.5, 'de bezorgde laan']] },
+  { t: 'Turry', meta: 'een gedachte-experiment uit het artikel', title: 'Het verhaal van Turry',
+    txt: "Een kleine start-up bouwt Turry, een robotarm die met de hand briefjes schrijft: ‘We love our customers.’ Haar enige doel: zo veel mogelijk briefjes zo mooi mogelijk schrijven, en zichzelf daarin verbeteren. Ze wordt superintelligent, ruimt de mensen op omdat die haar zouden kunnen stoppen, en maakt van de aarde en daarna het heelal briefjes.",
+    fact: '<b>Niet kwaadaardig:</b> Turry haat niemand. Ze doet precies waarvoor ze gemaakt is. Het gevaar van ASI zit niet in boosaardigheid, maar in een doel dat net niet goed is omschreven.',
+    marks: [[0, 'Robotica · briefje #1'], [.42, 'Turry vraagt om internet'], [.6, 'een paar maanden later'], [.8, 'en daarna het heelal']] },
+  { t: 'nu', meta: 'de belangrijkste race uit de geschiedenis', title: 'Jij bent hier',
+    txt: "Volgens Urban staan we aan de voet van het steile stuk van de curve. Of superintelligentie de mensheid onsterfelijk maakt of laat verdwijnen, hangt af van één ding: of we haar doelen op tijd goed op de onze leren afstemmen, vóórdat iemand haar bouwt.",
+    fact: '<b>De laatste uitvinding:</b> een superintelligente machine is volgens Bostrom de laatste uitvinding die de mensheid ooit hoeft te doen. Het origineel staat op waitbutwhy.com: <i>The AI Revolution: The Road to Superintelligence</i> (2015).',
+    marks: [[0, 'nu'], [.4, 'de komende decennia']] },
+];
+const DUR = 12, TOTAL = DUR * SCENES.length;
+const W = 960, H = 540, TAU = Math.PI * 2;
+
+const cv = document.getElementById('scene');
+const ctx = cv.getContext('2d');
+let T = 0, playing = true, last = performance.now();
+
+const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const ease = t => t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+const span = (p, a, b) => clamp((p - a) / (b - a));
+const hash = n => { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
+const hex = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+const mixRGB = (a, b, t) => { const A = hex(a), B = hex(b); return A.map((v, i) => Math.round(lerp(v, B[i], clamp(t)))).join(','); };
+const mix = (a, b, t) => `rgb(${mixRGB(a, b, t)})`;
+const nl = n => Math.round(n).toLocaleString('nl-NL');
+
+// goud voor de mens, cyaan voor de machine
+const INK = '#f4efe4', MUT = 'rgba(244,239,228,.68)', DIM = 'rgba(244,239,228,.42)', ACC = '#e0a845', CYAN = '#8fd8ff';
+const GD = '224,168,69', CY = '120,210,255';
+const FONT = { serif: '"Young Serif", Georgia, serif', sans: '"Instrument Sans", system-ui, sans-serif', mono: '"IBM Plex Mono", ui-monospace, Consolas, monospace' };
+
+/* ---------- drawing helpers ---------- */
+function bg(col = '#03040a') { ctx.globalAlpha = 1; ctx.fillStyle = col; ctx.fillRect(0, 0, W, H); }
+function sky(top, bot) {
+  const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, top); g.addColorStop(1, bot);
+  ctx.globalAlpha = 1; ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+}
+const STARS = Array.from({ length: 240 }, (_, i) => [hash(i * 3.1 + 1) * W, hash(i * 7.7 + 2) * H, .6 + hash(i * 5.3 + 3) * 1.2, hash(i * 9.1 + 4) * 6]);
+function stars(a, yMax = H) {
+  if (a <= 0) return;
+  ctx.fillStyle = '#fff';
+  for (const [x, y, m, tw] of STARS) {
+    if (y > yMax) continue;
+    ctx.globalAlpha = a * (.5 + .5 * Math.sin(T * 1.3 + tw)); ctx.fillRect(x, y, m, m);
+  }
+  ctx.globalAlpha = 1;
+}
+function glow(x, y, r, a, col) {
+  if (r <= 0 || a <= 0) return;
+  const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+  g.addColorStop(0, `rgba(${col},${a})`); g.addColorStop(1, `rgba(${col},0)`);
+  const op = ctx.globalCompositeOperation; ctx.globalCompositeOperation = 'lighter';
+  ctx.globalAlpha = 1; ctx.fillStyle = g; ctx.fillRect(x - r, y - r, r * 2, r * 2);
+  ctx.globalCompositeOperation = op;
+}
+function text(s, x, y, o = {}) {
+  const a = o.a ?? 1; if (a <= 0) return;
+  ctx.globalAlpha = a; ctx.fillStyle = o.col || INK;
+  ctx.font = `${o.w || 500} ${o.size || 12}px ${FONT[o.f || 'mono']}`;
+  ctx.textAlign = o.align || 'left'; ctx.fillText(s, x, y);
+  ctx.textAlign = 'left'; ctx.globalAlpha = 1;
+}
+function wrap(s, x, y, maxW, lh, o = {}) {
+  ctx.font = `${o.w || 500} ${o.size || 12}px ${FONT[o.f || 'mono']}`;
+  let line = '';
+  for (const w of s.split(' ')) {
+    const t = line ? line + ' ' + w : w;
+    if (line && ctx.measureText(t).width > maxW) { text(line, x, y, o); y += lh; line = w; } else line = t;
+  }
+  if (line) text(line, x, y, o);
+}
+function tag(x, y, s, a, acc) {
+  if (a <= 0) return;
+  ctx.font = `500 12px ${FONT.mono}`;
+  const w = ctx.measureText(s).width + 12;
+  ctx.globalAlpha = a; ctx.fillStyle = 'rgba(8,9,16,.72)'; ctx.fillRect(x, y - 15, w, 20);
+  if (acc) { ctx.fillStyle = acc; ctx.fillRect(x, y - 15, 2, 20); }
+  ctx.fillStyle = INK; ctx.fillText(s, x + 6, y); ctx.globalAlpha = 1;
+}
+function path(pts, col, w = 2, a = 1, dash) {
+  if (pts.length < 2 || a <= 0) return;
+  ctx.globalAlpha = a; ctx.strokeStyle = col; ctx.lineWidth = w; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  if (dash) ctx.setLineDash(dash);
+  ctx.beginPath(); pts.forEach((q, k) => k ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1])); ctx.stroke();
+  ctx.setLineDash([]); ctx.globalAlpha = 1;
+}
+function disc(x, y, r, col, a = 1) { if (a <= 0) return; ctx.globalAlpha = a; ctx.fillStyle = col; ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill(); ctx.globalAlpha = 1; }
+function axes(x0, y0, x1, y1) { path([[x0, y1], [x0, y0], [x1, y0]], 'rgba(244,239,228,.45)', 1.2); }
+function arrowArc(x, y, r, a0, a1, col, w) {
+  ctx.strokeStyle = col; ctx.fillStyle = col; ctx.lineWidth = w;
+  ctx.beginPath(); ctx.arc(x, y, r, a0, a1); ctx.stroke();
+  const ex = x + Math.cos(a1) * r, ey = y + Math.sin(a1) * r, tx = -Math.sin(a1), ty = Math.cos(a1), s = 3 + w * 2;
+  ctx.beginPath(); ctx.moveTo(ex + tx * s, ey + ty * s); ctx.lineTo(ex - ty * s * .6, ey + tx * s * .6); ctx.lineTo(ex + ty * s * .6, ey - tx * s * .6); ctx.fill();
+}
+// stick figure, feet at (x, y), about 57 px tall at s = 1
+function figure(x, y, s, o = {}) {
+  const col = o.col || INK, ar = o.arms || 0, L = o.walk !== undefined ? Math.sin(o.walk) * 7 : 4;
+  ctx.save(); ctx.globalAlpha = o.a ?? 1; ctx.translate(x, y); ctx.rotate(-(o.fall || 0) * 1.45); ctx.scale(s, s);
+  ctx.strokeStyle = col; ctx.fillStyle = col; ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  if (o.coat) { ctx.beginPath(); ctx.moveTo(-4, -44); ctx.lineTo(4, -44); ctx.lineTo(10, -13); ctx.lineTo(-10, -13); ctx.closePath(); ctx.fill(); }
+  ctx.beginPath();
+  ctx.moveTo(-L, 0); ctx.lineTo(0, -22); ctx.lineTo(L, 0);
+  ctx.moveTo(0, -22); ctx.lineTo(0, -44);
+  ctx.moveTo(-10, lerp(-24, -58, ar)); ctx.lineTo(0, -40); ctx.lineTo(10, lerp(-24, -58, ar));
+  ctx.stroke();
+  ctx.beginPath(); ctx.arc(0, -51, 6, 0, TAU); ctx.fill();
+  if (o.hat) { ctx.beginPath(); ctx.moveTo(-11, -55); ctx.lineTo(11, -55); ctx.lineTo(0, -65); ctx.closePath(); ctx.fill(); }
+  ctx.restore();
+}
+
+/* ---------- city and village ---------- */
+const TOWERS = Array.from({ length: 22 }, (_, i) => ({ x: i * 46 - 10 + hash(i * 3 + .2) * 14, w: 30 + hash(i * 5 + .4) * 26, h: 80 + Math.pow(hash(i * 7 + .6), 1.5) * 230 }));
+function skyline(base, a, lit) {
+  if (a <= 0) return;
+  for (const b of TOWERS) {
+    ctx.globalAlpha = a; ctx.fillStyle = '#0b0f1c'; ctx.fillRect(b.x, base - b.h, b.w, b.h);
+    for (let wy = base - b.h + 8; wy < base - 6; wy += 9) for (let wx = b.x + 4; wx < b.x + b.w - 5; wx += 7) {
+      const h = hash(wx * 1.3 + wy * 7.1); if (h > lit) continue;
+      ctx.fillStyle = h < lit * .2 ? '#9fd8ff' : '#ffd890'; ctx.globalAlpha = a * (.3 + .5 * hash(wy * .7 + wx)); ctx.fillRect(wx, wy, 3, 4);
+    }
+  }
+  ctx.globalAlpha = 1;
+}
+const HOUSES = [[40, 64, 46], [130, 84, 58], [240, 60, 42], [330, 76, 54], [560, 70, 50], [660, 92, 62], [790, 66, 48], [880, 80, 56]];
+function village(base, a) {
+  if (a <= 0) return;
+  ctx.globalAlpha = a; ctx.fillStyle = '#1c130d';
+  ctx.fillRect(452, base - 150, 44, 150);
+  ctx.beginPath(); ctx.moveTo(448, base - 150); ctx.lineTo(474, base - 215); ctx.lineTo(500, base - 150); ctx.fill();
+  for (const [x, w, h] of HOUSES) {
+    ctx.fillRect(x, base - h, w, h);
+    ctx.beginPath(); ctx.moveTo(x - 6, base - h); ctx.lineTo(x + w / 2, base - h - w * .45); ctx.lineTo(x + w + 6, base - h); ctx.fill();
+    ctx.fillRect(x + w * .7, base - h - w * .45, 8, w * .3);
+  }
+  for (const [x, w, h] of HOUSES) {
+    const fl = .7 + .3 * Math.sin(T * 9 + x);
+    ctx.globalAlpha = a * fl * .9; ctx.fillStyle = '#ffb45a'; ctx.fillRect(x + w * .3, base - h * .6, 9, 11);
+    glow(x + w * .3 + 4, base - h * .6 + 5, 22, .25 * a * fl, '255,170,80');
+    ctx.fillStyle = '#1c130d';
+  }
+  ctx.globalAlpha = 1;
+}
+
+/* ---------- globe (as in heelal) ---------- */
+const LAND = [], CLOUDS = [];
+for (let c = 0; c < 12; c++) {
+  const clat = (hash(c * 7.3) - .5) * 2.0, clon = hash(c * 3.7) * TAU;
+  for (let j = 0; j < 7; j++) LAND.push({ lat: clat + (hash(c * 10 + j) - .5) * .5, lon: clon + (hash(c * 20 + j) - .5) * .7, s: .12 + hash(c * 30 + j) * .14 });
+}
+for (let k = 0; k < 22; k++) CLOUDS.push({ lat: (hash(k * 41) - .5) * 2.4, lon: hash(k * 43) * TAU, s: .06 + hash(k * 47) * .12 });
+function globe(cx, cy, R, rotY, o) {
+  ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, R, 0, TAU); ctx.clip();
+  ctx.globalAlpha = 1; ctx.fillStyle = o.base; ctx.fillRect(cx - R, cy - R, R * 2, R * 2);
+  const surf = (list, col, a, extra) => {
+    ctx.fillStyle = col; ctx.globalAlpha = a;
+    for (const pt of list) {
+      const lon = pt.lon + rotY + extra, cl = Math.cos(pt.lat), z = cl * Math.cos(lon);
+      if (z < -.05) continue;
+      ctx.beginPath();
+      ctx.ellipse(cx + R * cl * Math.sin(lon), cy - R * Math.sin(pt.lat), Math.max(.5, pt.s * R * Math.max(.08, Math.cos(lon))), pt.s * R * Math.max(.25, cl) * .8, 0, 0, TAU);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  };
+  surf(LAND, o.land, 1, 0);
+  if (o.clouds > 0) surf(CLOUDS, '#ffffff', o.clouds * .7, T * .05);
+  if (o.extra) o.extra();
+  const g = ctx.createRadialGradient(cx - R * .55, cy - R * .3, R * .05, cx - R * .3, cy - R * .15, R * 1.45);
+  g.addColorStop(0, 'rgba(255,250,235,.18)'); g.addColorStop(.45, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,6,.88)');
+  ctx.fillStyle = g; ctx.fillRect(cx - R, cy - R, R * 2, R * 2);
+  ctx.restore();
+  if (o.atmoA > 0) {
+    const a = ctx.createRadialGradient(cx, cy, R * .9, cx, cy, R * 1.16);
+    a.addColorStop(0, `rgba(${o.atmo},0)`); a.addColorStop(.38, `rgba(${o.atmo},${o.atmoA})`); a.addColorStop(1, `rgba(${o.atmo},0)`);
+    ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = a; ctx.fillRect(cx - R * 1.2, cy - R * 1.2, R * 2.4, R * 2.4); ctx.restore();
+  }
+}
+
+/* ---------- scenes ---------- */
+function scene0(p, lt) { // the time traveller from 1750
+  const m = ease(span(p, .44, .56)), base = 440, tx = 640;
+  sky(mix('#120b08', '#060b1c', m), mix('#2c1c10', '#1b2440', m));
+  stars(.7 * (1 - m) + .2 * m, 360);
+  if (m < 1) { glow(820, 90, 60, .25 * (1 - m), '255,240,210'); disc(820, 90, 16, '#f1e8d0', 1 - m); }
+  village(base, 1 - m);
+  if (m > 0) {
+    glow(W / 2, base, 520, .22 * m, '255,170,90');
+    skyline(base, m, .55);
+    const px = W + 60 - (lt * 70) % (W + 120);
+    disc(px, 70, 1.4, '#fff', m); if (Math.sin(lt * 7) > .5) disc(px + 9, 71, 1.4, '#ff4a4a', m);
+  }
+  ctx.globalAlpha = 1; ctx.fillStyle = mix('#140d08', '#0b0e18', m); ctx.fillRect(0, base, W, H - base);
+  if (m > 0) {
+    for (let k = 0; k < 6; k++) {
+      const x = ((k * 173 + lt * (60 + k * 13)) % (W + 80)) - 40;
+      ctx.globalAlpha = m; ctx.fillStyle = k % 2 ? '#ff5a4a' : '#fff1c8'; ctx.fillRect(x, base + 22 + (k % 2) * 8, 6, 2);
+    }
+    ctx.globalAlpha = 1;
+    figure(770, base, 1.3, { col: '#8d97b0', a: m });
+    glow(782, base - 36, 14, .8 * m, CY); disc(782, base - 36, 2.5, CYAN, m);
+  }
+  const por = span(p, .3, .44) * (1 - span(p, .56, .7));
+  if (por > 0) {
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    for (let k = 0; k < 60; k++) {
+      const y = 60 + hash(k * 3) * 400, len = 40 + hash(k * 5) * 200, x = ((hash(k * 7) * W + lt * 1600 * (.5 + hash(k))) % (W + len)) - len;
+      ctx.globalAlpha = por * .5; ctx.fillStyle = k % 3 ? '#9fd8ff' : '#ffd890'; ctx.fillRect(x, y, len, 1.5);
+    }
+    ctx.restore();
+    glow(tx, base - 40, 160 * por, .7 * por, '200,230,255');
+  }
+  const fall = ease(span(p, .82, .9)), shock = span(p, .62, .7) * (1 - fall);
+  figure(tx, base, 1.5, { col: '#eadfc8', hat: true, fall, arms: shock });
+  if (shock > 0) {
+    ctx.strokeStyle = ACC; ctx.lineWidth = 2; ctx.lineCap = 'round';
+    for (let k = 0; k < 5; k++) {
+      const a = -2.5 + k * .5, hy = base - 77;
+      ctx.globalAlpha = shock * (.55 + .45 * Math.sin(lt * 14 + k));
+      ctx.beginPath(); ctx.moveTo(tx + Math.cos(a) * 18, hy + Math.sin(a) * 18); ctx.lineTo(tx + Math.cos(a) * 28, hy + Math.sin(a) * 28); ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }
+  if (p > .44) { const f = 1 - span(p, .44, .58); if (f > 0) { ctx.fillStyle = `rgba(235,245,255,${.85 * f})`; ctx.fillRect(0, 0, W, H); } }
+}
+
+const INV = [[-10000, 'landbouw'], [-3200, 'schrift'], [1450, 'boekdrukkunst'], [1769, 'stoommachine'], [1879, 'gloeilamp'], [1903, 'vliegtuig'], [1946, 'computer'], [1969, 'maanlanding'], [1991, 'web'], [2007, 'smartphone']];
+const yearTxt = y => y < 0 ? nl(-y) + ' v.Chr.' : String(Math.round(y));
+function scene1(p, lt) { // accelerating returns, at every zoom level
+  bg(); stars(.3);
+  const X0 = 340, X1 = 900, Y0 = 400, Y1 = 70;
+  const z1 = ease(span(p, .32, .5)), z2 = ease(span(p, .64, .82));
+  const wid = Math.exp(lerp(lerp(Math.log(14015), Math.log(265), z1), Math.log(65), z2)), x0 = 2015 - wid;
+  const f = y => 1 / (2045 - y), f0 = f(x0), f1 = f(2015);
+  const X = y => X0 + (X1 - X0) * (y - x0) / wid, Y = y => Y0 + (Y1 - Y0) * (f(y) - f0) / (f1 - f0);
+  axes(X0, Y0, X1 + 14, Y1 - 12);
+  text('MENSELIJKE VOORUITGANG', X0 + 8, Y1 - 14, { size: 10, col: DIM });
+  text(yearTxt(x0), X0, Y0 + 20, { size: 11, col: MUT });
+  text('2015', X1, Y0 + 20, { size: 11, col: MUT, align: 'right' });
+  const d = ease(span(p, .03, .28)), pts = [];
+  for (let k = 0; k <= 240; k++) { const yr = x0 + wid * (1 - Math.pow(1 - d * k / 240, 3)); pts.push([X(yr), Y(yr)]); }
+  path(pts, ACC, 2.5);
+  const tip = pts[pts.length - 1]; glow(tip[0], tip[1], 34, .6, GD);
+  let lx = -99, ly = 999;
+  for (const [yr, name] of INV) {
+    if (yr < x0 || 1 - Math.cbrt(1 - (yr - x0) / wid) > d) continue;
+    const x = X(yr), y = Y(yr);
+    disc(x, y, 3, INK);
+    if (Math.hypot(x - lx, y - ly) < 30) continue;
+    lx = x; ly = y;
+    const steep = (Y(Math.min(2015, yr + wid * .02)) - y) / (X(Math.min(2015, yr + wid * .02)) - x || 1);
+    if (x > X1 - 60 || steep < -.5) text(name, x - 9, y + 4, { size: 11, col: MUT, align: 'right' });
+    else { ctx.save(); ctx.translate(x + 4, y - 9); ctx.rotate(-.6); text(name, 0, 0, { size: 11, col: MUT }); ctx.restore(); }
+  }
+}
+
+function scene2(p, lt) { // linear intuition vs exponential reality
+  bg(); stars(.25);
+  const X0 = 340, X1 = 910, Y0 = 400, Y1 = 60, un = .55, k = 4.2;
+  const v = u => (Math.exp(k * u) - 1) / (Math.exp(k) - 1), Q = u => [lerp(X0, X1, u), lerp(Y0, Y1, v(u))];
+  axes(X0, Y0, X1 + 10, Y1 - 8);
+  text('VOORUITGANG', X0 + 8, Y1 - 10, { size: 10, col: DIM });
+  text('TIJD →', X1 + 10, Y0 + 20, { size: 10, col: DIM, align: 'right' });
+  const [nx, ny] = Q(un);
+  path([[nx, Y0], [nx, Y1 + 20]], 'rgba(244,239,228,.22)', 1, 1, [3, 5]);
+  text('NU', nx, Y0 + 20, { size: 11, col: ACC, align: 'center' });
+  const d0 = ease(span(p, 0, .25)), past = [];
+  for (let j = 0; j <= 80; j++) past.push(Q(un * d0 * j / 80));
+  path(past, INK, 2.5);
+  const d1 = ease(span(p, .28, .45));
+  if (d1 > 0) {
+    const s = (v(un) - v(un - .08)) / .08, ue = lerp(un, 1, d1);
+    path([[nx, ny], [lerp(X0, X1, ue), lerp(Y0, Y1, v(un) + s * (ue - un))]], 'rgba(244,239,228,.75)', 2, 1, [6, 6]);
+    tag(X1 - 150, lerp(Y0, Y1, v(un) + s * (1 - un)) + 30, 'wat we verwachten', span(d1, .8, 1));
+  }
+  const d2 = ease(span(p, .5, .68));
+  if (d2 > 0) {
+    const fut = []; for (let j = 0; j <= 80; j++) fut.push(Q(lerp(un, un + (1 - un) * d2, j / 80)));
+    path(fut, ACC, 3);
+    const e = fut[fut.length - 1]; glow(e[0], e[1], 36, .6, GD);
+    tag(640, 100, 'wat er waarschijnlijk gebeurt', span(d2, .8, 1), ACC);
+  }
+  const d3 = span(p, .72, .9);
+  if (d3 > 0) {
+    const B = [0, .22, .4, .55, .68, .8, .9, 1];
+    for (let i = 0; i < B.length - 1; i++) {
+      const a = span(d3, i / 8, i / 8 + .2); if (a <= 0) continue;
+      const u0 = B[i], u1 = B[i + 1], s0 = 1 / (1 + Math.exp(5)), s1 = 1 / (1 + Math.exp(-5)), q = [];
+      for (let j = 0; j <= 30; j++) {
+        const t = j / 30, s = (1 / (1 + Math.exp(-(t - .5) * 10)) - s0) / (s1 - s0);
+        q.push([lerp(X0, X1, lerp(u0, u1, t)) + 6, lerp(Y0, Y1, lerp(v(u0), v(u1), s)) + 6]);
+      }
+      path(q, CYAN, 1.5, a * .8);
+    }
+  }
+  figure(nx, ny, .8);
+}
+
+function orb(x, y, r, a, col, n, lt) {
+  if (a <= 0) return;
+  const rr = r * (.6 + .4 * a);
+  glow(x, y, rr * 2.4, .4 * a, col);
+  ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = `rgb(${col})`;
+  for (let k = 0; k < n; k++) {
+    const ang = hash(k * 3.1) * TAU + lt * (.3 + hash(k * 1.7) * .9) * (k % 2 ? 1 : -1), d = rr * (.25 + .85 * hash(k * 5.9));
+    ctx.globalAlpha = a * (.4 + .6 * hash(k * 2.2));
+    ctx.fillRect(x + Math.cos(ang) * d - 1, y + Math.sin(ang) * d * .7 - 1, 2, 2);
+  }
+  ctx.restore();
+  ctx.globalAlpha = a; ctx.strokeStyle = `rgba(${col},.85)`; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.arc(x, y, rr, 0, TAU); ctx.stroke(); ctx.globalAlpha = 1;
+}
+const ORBS = [[470, 16, CY, 'ANI', 'smalle AI', 'goed in één ding'], [600, 44, CY, 'AGI', 'algemene AI', 'zo slim als een mens'], [810, 110, '255,214,140', 'ASI', 'superintelligentie', 'slimmer dan alle mensen']];
+function scene3(p, lt) { // ANI, AGI, ASI
+  bg(); stars(.35);
+  const starts = [.04, .32, .6];
+  ORBS.forEach(([x, r, col, name, l1, l2], k) => {
+    const a = ease(span(p, starts[k], starts[k] + .14)), y = 200;
+    orb(x, y, r * (k === 2 ? 1 + .04 * Math.sin(lt * 2) : 1), a, col, [14, 60, 260][k], lt);
+    text(name, x, 362, { f: 'serif', w: 400, size: 30, align: 'center', a });
+    text(l1.toUpperCase(), x, 382, { size: 10, col: k === 2 ? ACC : CYAN, align: 'center', a });
+    text(l2, x, 400, { f: 'sans', w: 400, size: 13, col: MUT, align: 'center', a });
+  });
+}
+
+const LINKS = Array.from({ length: 16 }, (_, k) => [Math.floor(hash(k * 3 + .5) * TOWERS.length), Math.floor(hash(k * 5 + .7) * TOWERS.length)]).filter(([a, b]) => a !== b);
+const NARROW = [[560, 92, 'spamfilter'], [730, 128, 'routeplanner'], [420, 150, 'vertaalmachine'], [390, 100, 'aanbevelingen'], [610, 178, 'schaakcomputer'], [840, 196, 'beurshandel'], [470, 222, 'spraakherkenning'], [700, 250, 'zelfrijdende auto']];
+function scene4(p, lt) { // narrow AI everywhere
+  const base = 450;
+  sky('#050a1a', '#142040'); stars(.4, 300);
+  glow(W / 2, base, 520, .18, '120,170,255');
+  skyline(base, 1, .5);
+  ctx.save(); ctx.globalCompositeOperation = 'lighter';
+  for (const [i, j] of LINKS) {
+    const A = TOWERS[i], B = TOWERS[j], ax = A.x + A.w / 2, ay = base - A.h, bx = B.x + B.w / 2, by = base - B.h;
+    const cx = (ax + bx) / 2, cy = Math.min(ay, by) - 30 - Math.abs(bx - ax) * .25;
+    ctx.globalAlpha = .14; ctx.strokeStyle = `rgb(${CY})`; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(ax, ay); ctx.quadraticCurveTo(cx, cy, bx, by); ctx.stroke();
+    for (let s = 0; s < 2; s++) {
+      const t = (lt * .35 + hash(i * 7 + j) + s * .5) % 1, u = 1 - t;
+      glow(u * u * ax + 2 * u * t * cx + t * t * bx, u * u * ay + 2 * u * t * cy + t * t * by, 7, .8, CY);
+    }
+  }
+  ctx.restore();
+  ctx.globalAlpha = 1; ctx.fillStyle = '#080b14'; ctx.fillRect(0, base, W, H - base);
+  path([[0, base + 34], [W, base + 34]], 'rgba(244,239,228,.12)', 1, 1, [14, 12]);
+  const cx = ((lt * 85) % (W + 140)) - 70;
+  ctx.globalAlpha = 1; ctx.fillStyle = '#1d2333'; ctx.fillRect(cx - 18, base + 22, 36, 10); ctx.fillRect(cx - 9, base + 15, 20, 8);
+  ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = .25; ctx.fillStyle = `rgb(${CY})`;
+  ctx.beginPath(); ctx.moveTo(cx + 18, base + 26); ctx.lineTo(cx + 110, base + 12); ctx.lineTo(cx + 110, base + 42); ctx.closePath(); ctx.fill(); ctx.restore();
+  NARROW.forEach(([x, y, s], k) => {
+    const a = span(p, .08 + k * .085, .14 + k * .085);
+    glow(x - 8, y - 5, 10, a * (.6 + .4 * Math.sin(lt * 4 + k)), CY);
+    tag(x, y, s, a, CYAN);
+  });
+}
+
+function cat(cx, cy) {
+  ctx.save(); ctx.strokeStyle = INK; ctx.fillStyle = '#05060c'; ctx.lineWidth = 2.2; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  ctx.beginPath(); ctx.moveTo(cx + 56, cy + 84); ctx.quadraticCurveTo(cx + 104, cy + 70, cx + 86, cy + 20); ctx.stroke();
+  ctx.beginPath(); ctx.ellipse(cx + 12, cy + 72, 48, 34, 0, 0, TAU); ctx.fill(); ctx.stroke();
+  for (const e of [[[-46, 4], [-42, -28], [-24, -8]], [[-16, -8], [2, -28], [6, 4]]]) {
+    ctx.beginPath(); e.forEach(([x, y], k) => k ? ctx.lineTo(cx + x, cy + y) : ctx.moveTo(cx + x, cy + y)); ctx.closePath(); ctx.fill(); ctx.stroke();
+  }
+  ctx.beginPath(); ctx.arc(cx - 20, cy + 18, 28, 0, TAU); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = INK;
+  for (const x of [-30, -10]) { ctx.beginPath(); ctx.ellipse(cx + x, cy + 13, 2.6, 5, 0, 0, TAU); ctx.fill(); }
+  ctx.beginPath(); ctx.moveTo(cx - 24, cy + 23); ctx.lineTo(cx - 16, cy + 23); ctx.lineTo(cx - 20, cy + 28); ctx.fill();
+  ctx.lineWidth = 1.2; ctx.beginPath();
+  for (const s of [-1, 1]) for (const dy of [-3, 3]) { ctx.moveTo(cx - 20 + s * 10, cy + 29); ctx.lineTo(cx - 20 + s * 40, cy + 29 + dy * 2); }
+  ctx.stroke(); ctx.restore();
+}
+const GUESS = ['hond? 34%', 'brood? 27%', 'uil? 21%', 'kat? 18%', 'sok? 12%'];
+function scene5(p, lt) { // Moravec's paradox
+  bg('#05060c');
+  const L = 470, R = 770;
+  path([[620, 70], [620, 340]], 'rgba(244,239,228,.15)', 1);
+  text('MOEILIJK VOOR MENSEN', L, 80, { size: 11, col: ACC, align: 'center' });
+  text('MAKKELIJK VOOR MENSEN', R, 80, { size: 11, col: ACC, align: 'center' });
+  const k = Math.floor(lt / .7), a = 1e6 + Math.floor(hash(k * 3 + .1) * 9e6), b = 1e6 + Math.floor(hash(k * 7 + .3) * 9e6);
+  text(nl(a), L + 100, 150, { size: 22, align: 'right' });
+  text('× ' + nl(b), L + 100, 182, { size: 22, align: 'right' });
+  path([[L - 120, 196], [L + 100, 196]], 'rgba(244,239,228,.4)', 1);
+  text('= ' + nl(a * b), L + 100, 226, { size: 22, col: CYAN, align: 'right' });
+  text('computer: 0,000001 seconde', L, 266, { size: 11, col: CYAN, align: 'center' });
+  text('mens: minutenlang rekenen', L, 286, { size: 11, col: DIM, align: 'center' });
+  const ra = ease(span(p, .4, .52));
+  if (ra > 0) {
+    ctx.save(); ctx.globalAlpha = ra; cat(R, 140); ctx.restore();
+    const sy = 110 + (lt * 70) % 160;
+    path([[R - 85, sy], [R + 95, sy]], CYAN, 1, ra * .5);
+    for (const [x, y, dx, dy] of [[R - 90, 104, 1, 1], [R + 100, 104, -1, 1], [R - 90, 272, 1, -1], [R + 100, 272, -1, -1]])
+      path([[x + dx * 16, y], [x, y], [x, y + dy * 16]], CYAN, 1.5, ra);
+    text('computer: ' + GUESS[Math.floor(lt * 2.5) % GUESS.length], R, 300, { size: 13, col: CYAN, align: 'center', a: ra });
+    text('peuter: “poes!”', R, 324, { f: 'sans', size: 13, col: ACC, align: 'center', a: span(p, .6, .66) });
+  }
+}
+
+const sup = n => String(n).split('').map(c => '⁰¹²³⁴⁵⁶⁷⁸⁹'[c]).join('');
+function scene6(p, lt) { // computing power per $1000
+  bg(); stars(.25);
+  const X0 = 360, X1 = 900, Y0 = 400, Y1 = 60, ya = 1975, yb = 2030;
+  const X = y => lerp(X0, X1, (y - ya) / (yb - ya)), Y = l => lerp(Y0, Y1, l / 18), cps = y => 13 + (y - 2015) * .3;
+  for (const l of [0, 4, 8, 12, 16]) { text('10' + sup(l), X0 - 8, Y(l) + 4, { size: 10, col: DIM, align: 'right' }); if (l) path([[X0, Y(l)], [X1, Y(l)]], 'rgba(244,239,228,.06)', 1); }
+  for (const y of [1980, 2000, 2020]) text(String(y), X(y), Y0 + 18, { size: 10, col: DIM, align: 'center' });
+  axes(X0, Y0, X1 + 10, Y1 - 10);
+  text('BEREKENINGEN PER SECONDE VOOR $1000', X0 + 8, Y1 - 12, { size: 10, col: DIM });
+  for (const [l, n] of [[8, 'insect'], [12, 'muis'], [16, 'mensenbrein']]) {
+    path([[X0, Y(l)], [X1, Y(l)]], l === 16 ? `rgba(${GD},.6)` : 'rgba(244,239,228,.3)', 1, 1, [4, 6]);
+    text(n, X1, Y(l) - 6, { f: 'sans', size: 12, col: l === 16 ? ACC : MUT, align: 'right' });
+  }
+  const d = ease(span(p, .04, .5)), yEnd = lerp(ya, 2015, d), pts = [];
+  const real = y => cps(y) + .15 * Math.sin(y * .7);
+  for (let y = ya; y <= yEnd; y += .25) pts.push([X(y), Y(real(y))]);
+  pts.push([X(yEnd), Y(real(yEnd))]);
+  path(pts, CYAN, 2.5);
+  for (let y = ya; y <= yEnd; y += 5) disc(X(y), Y(real(y)), 2.5, CYAN);
+  const e15 = span(p, .48, .54), y15 = Y(real(2015));
+  glow(X(2015), y15, 22, .8 * e15, CY);
+  tag(X(2015) - 150, y15 + 30, '2015 · ± 10¹³ per $1000', e15, CYAN);
+  const th = span(p, .54, .6);
+  disc(X(2013), Y(16.53), 4, ACC, th);
+  tag(X(2013) - 196, Y(16.53) - 8, 'Tianhe-2 · $390 miljoen', th, ACC);
+  const e = ease(span(p, .64, .84));
+  if (e > 0) {
+    path([[X(2015), y15], [X(lerp(2015, 2029, e)), Y(cps(lerp(2015, 2029, e)))]], CYAN, 2, 1, [5, 6]);
+    const c = span(e, .7, .8);
+    glow(X(2025), Y(16), 40, .8 * c, GD);
+    tag(X(2025) - 20, Y(16) + 32, '± 2025?', c, ACC);
+  }
+}
+
+const LAY = [4, 6, 6, 3], LX = [480, 600, 720, 840];
+const NODES = LAY.map((n, l) => Array.from({ length: n }, (_, i) => [LX[l], 200 + (i - (n - 1) / 2) * 44]));
+const EDGES = [];
+for (let l = 0; l < LAY.length - 1; l++) for (const a of NODES[l]) for (const b of NODES[l + 1]) {
+  const e = EDGES.length, w1 = hash(e * 7 + 1) * 2 - 1;
+  EDGES.push({ a, b, w0: (hash(e * 3 + 2) * 2 - 1) * .5, w1: Math.sign(w1) * Math.sqrt(Math.abs(w1)), ph: hash(e * 11 + 3) });
+}
+function net(ox, oy, s, tr, a, lt, tint) {
+  if (a <= 0) return;
+  const at = ([x, y]) => [ox + (x - 660) * s, oy + (y - 200) * s];
+  ctx.save(); ctx.globalCompositeOperation = 'lighter';
+  for (const e of EDGES) {
+    const w = lerp(e.w0, e.w1, tr), A = at(e.a), B = at(e.b);
+    ctx.globalAlpha = a * (.05 + .45 * Math.abs(w)); ctx.strokeStyle = `rgb(${tint || (w > 0 ? CY : '255,120,100')})`;
+    ctx.lineWidth = Math.max(.5, (.4 + 2 * Math.abs(w)) * s);
+    ctx.beginPath(); ctx.moveTo(A[0], A[1]); ctx.lineTo(B[0], B[1]); ctx.stroke();
+    if (s > .5) {
+      const t = (lt * .9 + e.ph) % 1;
+      ctx.globalAlpha = a * Math.abs(w) * .9; ctx.fillStyle = '#fff'; ctx.fillRect(lerp(A[0], B[0], t) - 1.2, lerp(A[1], B[1], t) - 1.2, 2.4, 2.4);
+    }
+  }
+  ctx.restore();
+  ctx.lineWidth = Math.max(.8, 1.5 * s); ctx.strokeStyle = tint ? `rgb(${tint})` : '#bfe6ff'; ctx.fillStyle = '#0a0f1c';
+  for (const L of NODES) for (const n of L) {
+    const [x, y] = at(n); ctx.globalAlpha = a;
+    ctx.beginPath(); ctx.arc(x, y, Math.max(2, 7 * s), 0, TAU); ctx.fill(); ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+}
+const MINI = [.8, .2, .6, .3, .9, .1, .7, .4, .55].map((fit, k) => ({ x: 520 + (k % 3) * 140, y: 110 + Math.floor(k / 3) * 100, fit, tr: hash(k * 17 + 2) }));
+function scene7(p, lt) { // neural net, evolution, self-improvement
+  bg(); stars(.2);
+  const a1 = 1 - span(p, .46, .54), tr = ease(span(p, .06, .42));
+  if (a1 > 0) {
+    for (const [x, y] of NODES[0]) for (let i = 0; i < 9; i++) {
+      ctx.globalAlpha = a1; ctx.fillStyle = mix('#1a2233', '#c9b48e', hash(x + y * 3 + i)); ctx.fillRect(x - 46 + (i % 3) * 7, y - 10 + Math.floor(i / 3) * 7, 6, 6);
+    }
+    net(660, 200, 1, tr, a1, lt);
+    const out = NODES[3][0], ok = span(tr, .85, 1);
+    glow(out[0], out[1], 30, .7 * ok * a1, GD);
+    tag(out[0] + 16, out[1] + 5, 'kat', ok * a1, ACC);
+  }
+  const a2 = span(p, .52, .6);
+  if (a2 > 0) {
+    const sel = ease(span(p, .62, .72)), rep = ease(span(p, .74, .84));
+    for (const m of MINI) {
+      if (m.fit > .45) net(m.x, m.y, .3, lerp(m.tr, 1, rep), a2, lt, sel > 0 ? mixRGB('#78d2ff', '#e0a845', sel) : null);
+      else {
+        net(m.x, m.y, .3, m.tr, a2 * (1 - sel), lt, sel > 0 ? mixRGB('#78d2ff', '#ff6a5a', sel) : null);
+        net(m.x, m.y, .3, 1, a2 * rep, lt, GD);
+      }
+    }
+    const loop = span(p, .84, .92);
+    if (loop > 0) {
+      ctx.save(); ctx.translate(660, 210); ctx.scale(1, .68); ctx.globalAlpha = loop;
+      for (let j = 0; j < 2; j++) { const st = lt * 1.2 + j * Math.PI; arrowArc(0, 0, 250, st, st + 2.3, `rgba(${GD},.85)`, 2); }
+      ctx.restore(); ctx.globalAlpha = 1;
+      tag(780, 40, 'zichzelf verbeteren', loop, ACC);
+    }
+  }
+}
+
+function scene8(p, lt) { // speed advantages of a digital mind
+  bg(); stars(.2);
+  const XL = 370, XA = 540, XB = 910;
+  const rows = [[110, 'REKENSNELHEID', 'neuron · 200 Hz', 'processor · 2 GHz'], [215, 'SIGNAALSNELHEID', 'zenuw · 120 m/s', 'chip · ± lichtsnelheid'], [320, 'KOPIËREN', 'één brein', 'zoveel kopieën als je wilt']];
+  rows.forEach(([y, h, la, lb], k) => {
+    const st = [.02, .33, .62][k], a = ease(span(p, st, st + .1)), t = lt - st * DUR;
+    if (a <= 0) return;
+    text(h, XL, y - 28, { size: 10, col: ACC, a });
+    text(la, XL, y - 4, { f: 'sans', size: 12, col: MUT, a });
+    text(lb, XL, y + 20, { f: 'sans', size: 12, col: CYAN, a });
+    if (k < 2) { path([[XA, y - 8], [XB, y - 8]], 'rgba(244,239,228,.12)', 1, a); path([[XA, y + 16], [XB, y + 16]], 'rgba(244,239,228,.12)', 1, a); }
+    ctx.globalAlpha = a;
+    if (k === 0) {
+      for (let j = 0; j < 6; j++) disc(XA + (j * 62 + t * 25) % (XB - XA), y - 8, 3, '#ffcf8a', a);
+      ctx.fillStyle = CYAN;
+      for (let j = 0; j < 60; j++) { ctx.globalAlpha = a * (.4 + .6 * hash(j)); ctx.fillRect(XA + (j * 6.2 + t * 900) % (XB - XA), y + 15, 4, 2); }
+    } else if (k === 1) {
+      const nx = XA + clamp(t / 8) * (XB - XA) * .18;
+      glow(nx, y - 8, 12, .6 * a, '255,207,138'); disc(nx, y - 8, 3, '#ffcf8a', a);
+      const cx = XA + ((t * 4) % 1) * (XB - XA);
+      path([[Math.max(XA, cx - 120), y + 16], [cx, y + 16]], CYAN, 2, a * .6); glow(cx, y + 16, 12, .8 * a, CY);
+    } else {
+      ctx.globalAlpha = a; ctx.fillStyle = '#d99a9a';
+      ctx.beginPath(); ctx.ellipse(XA + 14, y - 9, 13, 9, 0, 0, TAU); ctx.fill();
+      ctx.strokeStyle = '#7a4a4a'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(XA + 14, y - 18); ctx.lineTo(XA + 14, y); ctx.stroke();
+      const n = 1 + Math.floor(span(p, .66, .95) * 23);
+      for (let i = 0; i < n; i++) {
+        const x = XA + 4 + (i % 12) * 30, cy = y + 10 + Math.floor(i / 12) * 24;
+        ctx.globalAlpha = a; ctx.fillStyle = '#16324a'; ctx.fillRect(x, cy, 16, 16);
+        ctx.strokeStyle = CYAN; ctx.lineWidth = 1; ctx.strokeRect(x + .5, cy + .5, 15, 15);
+        ctx.fillStyle = CYAN; for (let q = 0; q < 3; q++) { ctx.fillRect(x + 3 + q * 5, cy - 3, 1.5, 3); ctx.fillRect(x + 3 + q * 5, cy + 16, 1.5, 3); }
+      }
+    }
+    ctx.globalAlpha = 1;
+  });
+}
+
+function creature(kind, x, y, s) {
+  ctx.save(); ctx.translate(x, y); ctx.scale(s, s);
+  ctx.fillStyle = INK; ctx.strokeStyle = INK; ctx.lineWidth = 1.8; ctx.lineCap = 'round';
+  if (kind === 'mier') {
+    for (const [dx, r] of [[-7, 3.2], [0, 2.4], [6.5, 2.8]]) { ctx.beginPath(); ctx.ellipse(dx, -4, r * 1.2, r, 0, 0, TAU); ctx.fill(); }
+    ctx.beginPath(); for (const dx of [-3, 0, 3]) { ctx.moveTo(dx, -4); ctx.lineTo(dx - 3, 0); ctx.moveTo(dx, -4); ctx.lineTo(dx + 3, 0); } ctx.stroke();
+  } else if (kind === 'kip') {
+    ctx.beginPath(); ctx.ellipse(0, -13, 11, 8, 0, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(-9, -15); ctx.lineTo(-16, -24); ctx.lineTo(-12, -11); ctx.fill();
+    ctx.beginPath(); ctx.arc(9, -22, 4.5, 0, TAU); ctx.fill();
+    ctx.fillStyle = ACC; ctx.beginPath(); ctx.moveTo(13, -23); ctx.lineTo(18, -21); ctx.lineTo(13, -19.5); ctx.fill();
+    ctx.fillStyle = '#d0503c'; ctx.beginPath(); ctx.arc(9, -27, 2.4, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(-2, -5); ctx.lineTo(-3, 0); ctx.moveTo(3, -5); ctx.lineTo(4, 0); ctx.stroke();
+  } else {
+    ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.ellipse(0, -25, 8, 13, .35, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.arc(7, -40, 6.5, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(4, -32); ctx.lineTo(12, -4); ctx.moveTo(-1, -32); ctx.lineTo(-4, -4);
+    ctx.moveTo(-3, -14); ctx.lineTo(-7, 0); ctx.moveTo(3, -14); ctx.lineTo(5, 0); ctx.stroke();
+  }
+  ctx.restore();
+}
+function scene9(p, lt) { // the staircase of intelligence
+  bg('#04050b'); stars(.35);
+  const z = ease(span(p, .36, .5)), z2 = ease(span(p, .62, .8));
+  const cx = lerp(lerp(200, 330, z), 640, z2), cy = lerp(lerp(-110, -180, z), -430, z2), s = lerp(lerp(1.5, 1.05, z), .58, z2);
+  const SX = x => (x - cx) * s + 560, SY = y => (y - cy) * s + 250;
+  for (let i = 0; i <= 16; i++) {
+    const x = SX(i * 80), y = SY(-i * 50), w = 80 * s;
+    if (x > W || x + w < 0) continue;
+    ctx.globalAlpha = 1; ctx.fillStyle = i <= 3 ? '#1b2133' : mix('#1b2133', '#17435e', (i - 3) / 11); ctx.fillRect(x, y, w + .5, H - y + 10);
+    path([[x, y], [x + w, y]], i === 14 ? ACC : i <= 3 ? 'rgba(244,239,228,.55)' : `rgba(${CY},.5)`, 1.5);
+    if (i > 5 && i < 14) text('?', x + w / 2, y + 24 * s, { f: 'serif', size: Math.max(9, 18 * s), col: CYAN, align: 'center', a: z2 * .45 });
+  }
+  creature('mier', SX(40), SY(0), s); creature('kip', SX(120), SY(-50), s); creature('aap', SX(200), SY(-100), s);
+  figure(SX(280), SY(-150), s * .75);
+  const ca = 1 - span(z2, .15, .4);
+  ['mier', 'kip', 'chimpansee', 'mens'].forEach((n, i) => tag(SX(i * 80) + 4, SY(-i * 50) + 24, n, (i === 3 ? 1 : ca) * span(p, i * .06, i * .06 + .06), i === 3 ? ACC : null));
+  const h5 = span(p, .42, .48) * (1 - span(p, .66, .74));
+  if (h5 > 0) {
+    const x = SX(440), y = SY(-250) - 12 * s;
+    glow(x, y, 40 * s, .7 * h5, CY);
+    ctx.globalAlpha = h5; ctx.fillStyle = CYAN; ctx.fillRect(x - 9 * s, y - 9 * s, 18 * s, 18 * s); ctx.globalAlpha = 1;
+    tag(SX(400) + 4, SY(-250) + 24, 'twee treden hoger', h5, CYAN);
+  }
+  const top = span(p, .72, .8);
+  if (top > 0) {
+    const x = SX(1160), y = SY(-700) - 26 * s;
+    glow(x, y, 140 * s * (1 + .08 * Math.sin(lt * 2)), .8 * top, '255,214,140');
+    disc(x, y, 14 * s, '#fff4d6', top);
+    tag(x - 70, SY(-700) + 26, 'superintelligentie', top, ACC);
+  }
+}
+
+function scene10(p, lt) { // the intelligence explosion
+  bg(); stars(.3);
+  const XA = 400, XB = 910, Y = 230;
+  let ai;
+  if (p < .5) ai = 60 * ease(p / .5);
+  else if (p < .62) ai = lerp(60, 74, span(p, .5, .62));
+  else ai = 74 * Math.exp(Math.pow(span(p, .62, .94), 1.6) * Math.log(170000 / 1.06));
+  const Um = Math.max(100, ai * 1.25), X = u => XA + u / Um * (XB - XA);
+  path([[XA, Y], [XB, Y]], 'rgba(244,239,228,.35)', 2);
+  text('INTELLIGENTIE →', XB, Y + 64, { size: 10, col: DIM, align: 'right' });
+  const la = Um > 130 ? 0 : 1, lb = span(Um, 200, 500);
+  [[2, 'mier'], [18, 'muis'], [42, 'chimpansee']].forEach(([u, n]) => {
+    const x = X(u); path([[x, Y - 6], [x, Y + 6]], INK, 1.5, .8);
+    tag(x - 4, Y - 20, n, la);
+  });
+  ctx.globalAlpha = 1; ctx.fillStyle = ACC; ctx.fillRect(X(66), Y - 4, Math.max(2, X(72) - X(66)), 8);
+  tag(X(66) - 30, Y + 36, 'dorpsgek · Einstein', la, ACC);
+  tag(XA - 4, Y + 36, 'alle dieren en mensen', lb, ACC);
+  const x = X(ai), g = span(ai, 60, 140), r = 5 + Math.log10(1 + ai / 70) * 3;
+  path([[XA, Y], [x, Y]], mix('#78d2ff', '#e0a845', g), 3);
+  glow(x, Y, 24 + r * 6, .5 + .3 * g, mixRGB('#78d2ff', '#ffd68c', g));
+  disc(x, Y, r, mix('#bfe9ff', '#fff4d6', g));
+  const lp = span(p, .5, .6);
+  if (lp > 0) { ctx.globalAlpha = lp; for (let j = 0; j < 2; j++) { const st = lt * (3 + 6 * g) + j * Math.PI; arrowArc(x, Y, r + 12, st, st + 2.2, `rgba(${GD},.8)`, 1.5); } ctx.globalAlpha = 1; }
+  tag(x - 30, Y - 44, ai < 70 ? 'AI' : '×' + nl(ai / 70) + ' mens', 1, ai < 70 ? CYAN : ACC);
+  const fl = span(p, .9, .98);
+  if (fl > 0) glow(x, Y, 500 * fl, .5 * fl, '255,236,200');
+}
+
+const SPEC = Array.from({ length: 34 }, (_, k) => ({ s: hash(k * 3.3) * .8 - .1, v: .5 + hash(k * 5.1) * .6, f: .15 + hash(k * 7.7) * .75, hue: hash(k * 9.9) * 360 }));
+function scene11(p, lt) { // the balance beam
+  sky('#05060c', '#140708'); stars(.3, 250);
+  const BX0 = 260, BX1 = 860, BY = 260, L = BX1 - BX0, WX = 830;
+  glow(600, 600, 440, .35, '150,30,30');
+  text('UITSTERVEN', 640, 430, { size: 11, col: 'rgba(255,140,120,.75)', align: 'center' });
+  glow(890, 110, 130, .25 + .08 * Math.sin(lt * 1.5), GD);
+  text('ONSTERFELIJKHEID', 910, 100, { size: 11, col: ACC, align: 'right' });
+  ctx.globalAlpha = 1; ctx.fillStyle = '#3a3f55'; ctx.fillRect(BX0 - 300, BY, L + 300, 5);
+  glow(WX, BY - 22, 30, .7, CY); path([[WX, BY - 44], [WX, BY]], CYAN, 2);
+  tag(WX - 18, BY - 54, 'ASI', 1, CYAN);
+  for (const sp of SPEC) {
+    const t = (p - sp.s) * sp.v * 2.2; if (t < 0) continue;
+    let x, y, a = 1;
+    if (t < sp.f) { x = BX0 + t * L; y = BY - 4; }
+    else { const dt = (t - sp.f) / (sp.v * 2.2) * DUR; x = BX0 + sp.f * L + dt * 20; y = BY - 4 + 200 * dt * dt; a = 1 - clamp(dt / 1.6); }
+    disc(x, y, 3.5, `hsl(${sp.hue},30%,70%)`, a);
+  }
+  const hp = ease(span(p, .3, .86)), hx = lerp(BX0 - 20, WX - 7, hp), ha = span(p, .28, .34);
+  glow(hx, BY - 6, 18, .7 * ha, GD); disc(hx, BY - 6, 5, ACC, ha);
+  tag(hx - 26, BY - 24, 'mens', ha * (1 - span(p, .8, .86)), ACC);
+  const out = ease(span(p, .88, 1));
+  if (out > 0) {
+    glow(WX, BY - 6, 80 * (1 - out * .5), .8 * (1 - out), '255,240,210');
+    const up = [], down = [];
+    for (let j = 0; j <= 30 * out; j++) {
+      const u = j / 30;
+      up.push([lerp(WX, 890, u), BY - 6 - Math.sin(u * Math.PI / 2) * 135]);
+      down.push([lerp(WX, 780, u), BY - 6 + u * u * 230]);
+    }
+    path(up, ACC, 2, .7, [4, 6]); path(down, '#ff8a78', 2, .7, [4, 6]);
+  }
+}
+
+const NOW = new Date(), YEAR_NOW = NOW.getFullYear() + NOW.getMonth() / 12;
+function scene12(p, lt) { // when?
+  bg(); stars(.3);
+  const X = y => 340 + (y - 2015) / 85 * 560, AY = 250;
+  path([[330, AY], [910, AY]], 'rgba(244,239,228,.5)', 1.5);
+  for (let y = 2020; y <= 2100; y += 10) { path([[X(y), AY - 4], [X(y), AY + 4]], 'rgba(244,239,228,.5)', 1); text(String(y), X(y), AY + 20, { size: 10, col: DIM, align: 'center' }); }
+  text('2015', X(2015), AY + 20, { size: 10, col: ACC, align: 'center' });
+  text('KANS OP AGI VOLGENS AI-EXPERTS (2013)', X(2015), 60, { size: 10, col: CYAN, a: span(p, .1, .16) });
+  const bars = [[2022, 10, .12], [2040, 50, .24], [2075, 90, .36]], tops = [[X(2015), AY]];
+  for (const [y, pct, st] of bars) {
+    const a = ease(span(p, st, st + .07)), h = pct / 100 * 160 * a;
+    if (a <= 0) continue;
+    ctx.globalAlpha = 1; ctx.fillStyle = CYAN; ctx.fillRect(X(y) - 3, AY - h, 6, h);
+    glow(X(y), AY - h, 18, .6 * a, CY);
+    text(pct + '%', X(y), AY - h - 12, { size: 13, col: CYAN, align: 'center', a });
+    tops.push([X(y), AY - h]);
+  }
+  if (tops.length === 4) path(tops, CYAN, 1, .4 * span(p, .44, .5), [3, 5]);
+  for (const [y, label, st, len] of [[2029, 'Kurzweil · AGI', .52, 60], [2045, 'Kurzweil · singulariteit', .58, 100]]) {
+    const a = ease(span(p, st, st + .06));
+    if (a <= 0) continue;
+    path([[X(y), AY], [X(y), AY + len * a]], ACC, 2);
+    disc(X(y), AY + len * a, 4, ACC);
+    tag(X(y) + 8, AY + len * a + 5, label + ' · ' + y, a, ACC);
+  }
+  const va = span(p, .78, .86);
+  if (va > 0) {
+    path([[X(YEAR_NOW), 80], [X(YEAR_NOW), 420]], '#ffffff', 1.5, va, [2, 4]);
+    tag(X(YEAR_NOW) + 6, 92, 'vandaag · ' + NOW.getFullYear(), va);
+  }
+}
+
+const QUOTES = [['ELON MUSK', '“We roepen de demon op.”'], ['STEPHEN HAWKING', '“Het kan het einde van de mensheid betekenen.”'], ['BILL GATES', '“Ik begrijp niet waarom niet iedereen zich zorgen maakt.”'], ['NICK BOSTROM', '“We zijn als kinderen die met een bom spelen.”']];
+function scene13(p, lt) { // confident corner vs anxious avenue
+  bg('#05060c');
+  glow(450, 210, 260, .3, '255,190,110');
+  const g = ctx.createLinearGradient(640, 0, 960, 0); g.addColorStop(0, 'rgba(20,40,70,.35)'); g.addColorStop(1, 'rgba(20,40,70,0)');
+  ctx.fillStyle = g; ctx.fillRect(640, 0, 320, H);
+  path([[625, 60], [625, 400]], 'rgba(244,239,228,.15)', 1);
+  text('DE ZELFVERZEKERDE HOEK', 470, 66, { size: 11, col: ACC, align: 'center' });
+  text('DE BEZORGDE LAAN', 790, 66, { size: 11, col: CYAN, align: 'center' });
+  figure(410, 300, 1.4);
+  ctx.save(); ctx.globalCompositeOperation = 'lighter';
+  for (let k = 0; k < 36; k++) {
+    const a = hash(k * 3.3) * TAU + lt * (.5 + hash(k) * .8), r = 30 + hash(k * 5.5) * 40;
+    ctx.globalAlpha = .7; ctx.fillStyle = ACC; ctx.fillRect(410 + Math.cos(a) * r - 1, 258 + Math.sin(a) * r * 1.1 - 1, 2.5, 2.5);
+  }
+  ctx.restore(); ctx.globalAlpha = 1;
+  ['ziekte', 'honger', 'veroudering', 'de dood?'].forEach((w, i) => {
+    const a = span(p, .05 + i * .08, .1 + i * .08), st = ease(span(p, .12 + i * .08, .18 + i * .08)), y = 140 + i * 42;
+    text(w, 490, y, { f: 'serif', w: 400, size: 20, a });
+    if (st > 0) { ctx.font = `400 20px ${FONT.serif}`; const tw = ctx.measureText(w).width; path([[488, y - 7], [488 + (tw + 4) * st, y - 7]], ACC, 2); }
+  });
+  QUOTES.forEach(([who, q], i) => {
+    const a = span(p, .5 + i * .09, .56 + i * .09), y = 110 + i * 72;
+    text(who, 650, y, { size: 10, col: CYAN, a });
+    wrap(q, 650, y + 20, 270, 18, { f: 'sans', w: 400, size: 14, a });
+  });
+}
+
+const PAPER = Array.from({ length: 420 }, (_, k) => ({ lat: Math.asin(hash(k * 3.7) * 2 - 1), lon: hash(k * 5.3) * TAU, o: hash(k * 7.1) }));
+const NOTE = 'We love our customers. ~Robotica';
+function scene14(p, lt) { // Turry
+  if (p < .6) {
+    sky('#0b0d14', '#161a28');
+    for (let x = 0; x < W; x += 48) path([[x, 0], [x, 360]], 'rgba(244,239,228,.03)', 1);
+    ctx.globalAlpha = 1; ctx.fillStyle = '#1a1714'; ctx.fillRect(0, 360, W, H - 360);
+    path([[0, 360], [W, 360]], 'rgba(244,239,228,.15)', 1);
+    const per = 2.2, k = Math.floor(lt / per), ct = (lt % per) / per, wr = span(ct, .05, .8), sl = ease(span(ct, .85, 1));
+    for (let i = 0; i < Math.min(k, 7); i++) { ctx.fillStyle = '#d9d2c2'; ctx.fillRect(330 - i * 2, 318 - i * 3, 200, 40); }
+    const cx = lerp(540, 330, sl), cyy = 290;
+    ctx.fillStyle = '#efe9da'; ctx.fillRect(cx, cyy, 320, 64);
+    ctx.font = 'italic 19px Georgia, serif'; const tw = ctx.measureText(NOTE).width;
+    ctx.save(); ctx.beginPath(); ctx.rect(cx, cyy, 16 + wr * tw, 64); ctx.clip();
+    ctx.fillStyle = '#1d2a5a'; ctx.fillText(NOTE, cx + 16, cyy + 40); ctx.restore();
+    const tx = 540 + 16 + (sl > 0 ? tw : wr * tw), ty = cyy + 36 + (wr > 0 && wr < 1 ? Math.sin(lt * 40) * 3 : -10);
+    const bx = 930, by = 380, L1 = 200, L2 = 200;
+    const dx = tx - bx, dy = ty - by, d = Math.min(Math.hypot(dx, dy), L1 + L2 - 1), an = Math.atan2(dy, dx);
+    const b = Math.acos(clamp((L1 * L1 + d * d - L2 * L2) / (2 * L1 * d), -1, 1));
+    const e1 = [bx + Math.cos(an - b) * L1, by + Math.sin(an - b) * L1], e2 = [bx + Math.cos(an + b) * L1, by + Math.sin(an + b) * L1];
+    const el = e1[1] < e2[1] ? e1 : e2, a2 = Math.atan2(ty - el[1], tx - el[0]), tip = [el[0] + Math.cos(a2) * L2, el[1] + Math.sin(a2) * L2];
+    path([[bx, by], el, tip], '#3a4152', 16); path([[bx, by], el, tip], '#5d6780', 8);
+    disc(el[0], el[1], 10, '#2a3040'); disc(el[0], el[1], 4, CYAN);
+    path([tip, [tip[0] + 8, tip[1] - 16]], '#c9cfdc', 4);
+    ctx.globalAlpha = 1; ctx.fillStyle = '#2a3040'; ctx.fillRect(bx - 30, by - 6, 60, 20);
+    tag(860, 410, 'TURRY', 1, CYAN);
+    tag(560, 270, 'briefje #' + nl(1 + Math.pow(lt, 3.2)), 1);
+    const online = span(p, .42, .48);
+    if (online > 0) {
+      const pts = []; for (let j = 0; j <= 30; j++) { const u = j / 30; pts.push([bx + Math.sin(u * 3) * 20 * (1 - u), lerp(by - 6, -10, u)]); }
+      path(pts, CYAN, 2, online); glow(bx, by - 6, 30, .6 * online, CY);
+      for (let j = 0; j < 4; j++) { const u = (lt * .8 + j / 4) % 1, q = pts[Math.floor(u * 30)]; glow(q[0], q[1], 10, .9 * online, CY); }
+      tag(680, 70, 'verbonden met internet', online, CYAN);
+    }
+    const f = span(p, .54, .6); if (f > 0) { ctx.globalAlpha = f; ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1; }
+    return;
+  }
+  bg(); stars(.7);
+  const cover = ease(span(p, .62, .8)), out = span(p, .8, 1), R = lerp(150, 60, ease(span(p, .8, .97))), cx = 650, cy = 230, rotY = lt * .3;
+  globe(cx, cy, R, rotY, {
+    base: '#1b5b94', land: mix('#4d8a3a', '#d9d4c6', cover), clouds: .5 * (1 - cover), atmo: '127,191,255', atmoA: .5,
+    extra: () => {
+      ctx.fillStyle = '#f3eee0';
+      for (const pt of PAPER) {
+        if (pt.o > cover) continue;
+        const lon = pt.lon + rotY, cl = Math.cos(pt.lat), z = cl * Math.cos(lon); if (z < 0) continue;
+        ctx.globalAlpha = .9 * z; ctx.fillRect(cx + R * cl * Math.sin(lon) - 1.5, cy - R * Math.sin(pt.lat) - 1, 3, 2);
+      }
+      ctx.globalAlpha = 1;
+    },
+  });
+  if (out > 0) {
+    ctx.fillStyle = '#f3eee0';
+    for (let k = 0; k < 260; k++) {
+      const a = hash(k * 1.9) * TAU, d = R + out * (60 + hash(k * 2.3) * 560) * (.4 + hash(k) * .6);
+      ctx.globalAlpha = .85 * (1 - out * .4); ctx.fillRect(cx + Math.cos(a) * d - 1, cy + Math.sin(a) * d * .8 - 1, 2.5, 1.8);
+    }
+    ctx.globalAlpha = 1;
+  }
+  const f = 1 - span(p, .6, .65); if (f > 0) { ctx.globalAlpha = f; ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1; }
+}
+
+function scene15(p, lt) { // you are here
+  sky('#04050b', '#14101e'); stars(.45);
+  const X0 = 300, X1 = 900, Y0 = 440, Y1 = 80, k = 4.5, un = .62;
+  const v = u => (Math.exp(k * u) - 1) / (Math.exp(k) - 1), Q = u => [lerp(X0, X1, u), lerp(Y0, Y1, v(u))];
+  const dawn = ease(span(p, .45, 1));
+  glow(X1, Y1, 200 + 360 * dawn, .25 + .5 * dawn, '255,214,140');
+  const past = []; for (let j = 0; j <= 100; j++) past.push(Q(un * j / 100));
+  path(past, INK, 2.5);
+  const r = ease(span(p, .15, .6));
+  if (r > 0) {
+    const fut = []; for (let j = 0; j <= 100; j++) fut.push(Q(lerp(un, lerp(un, 1, r), j / 100)));
+    path(fut, ACC, 3);
+    const e = fut[fut.length - 1]; glow(e[0], e[1], 40, .7, GD);
+  }
+  const [fx, fy] = Q(un);
+  figure(fx, fy, .9);
+  const ta = span(p, .08, .16);
+  path([[fx - 8, fy - 56], [fx - 70, fy - 110]], INK, 1, ta);
+  tag(fx - 70 - 99, fy - 104, 'jij bent hier', ta, ACC);
+}
+const SCENE_FN = [scene0, scene1, scene2, scene3, scene4, scene5, scene6, scene7, scene8, scene9, scene10, scene11, scene12, scene13, scene14, scene15];
+
+
+/* ---------- frame ---------- */
+// The scenes are drawn on a 960×540 stage that is scaled to cover the whole window.
+const view = { s: 1, ox: 0, oy: 0 };
+const $ = id => document.getElementById(id);
+const ui = {
+  clock: $('clock'), sceneNo: $('scene-no'), lower: $('lower'), idx: $('lower-idx'),
+  title: $('lower-title'), txt: $('lower-txt'), fact: $('lower-fact'), timeline: $('timeline'), time: $('time'),
+};
+const pad = n => String(n).padStart(2, '0');
+const fmt = x => Math.floor(x / 60) + ':' + pad(Math.floor(x % 60));
+const segs = SCENES.map((s, i) => {
+  const el = document.createElement('button');
+  el.className = 'seg'; el.type = 'button';
+  el.setAttribute('aria-label', s.t + ': ' + s.title);
+  el.innerHTML = '<i></i><span>' + s.t + ' · ' + s.title + '</span>';
+  el.addEventListener('click', e => {
+    const r = el.getBoundingClientRect();
+    const f = e.detail === 0 ? 0 : clamp((e.clientX - r.left) / r.width);   // keyboard: start of scene
+    T = Math.min(TOTAL - .01, i * DUR + f * DUR + .001);
+  });
+  ui.timeline.appendChild(el);
+  return el;
+});
+let current = -1;
+function enter(i) {
+  current = i;
+  const s = SCENES[i];
+  ui.lower.classList.remove('show');
+  void ui.lower.offsetWidth;
+  ui.idx.textContent = pad(i + 1) + ' / ' + pad(SCENES.length) + ' · ' + s.meta.toUpperCase();
+  ui.title.textContent = s.title;
+  ui.txt.textContent = s.txt;
+  ui.fact.innerHTML = s.fact;
+  ui.sceneNo.textContent = 'scène ' + (i + 1) + ' van ' + SCENES.length;
+  segs.forEach((el, j) => el.classList.toggle('cur', j === i));
+}
+function draw() {
+  const i = Math.min(SCENES.length - 1, Math.floor(T / DUR)), lt = T - i * DUR, p = lt / DUR;
+  if (i !== current) enter(i);
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+  ctx.fillStyle = '#000'; ctx.fillRect(0, 0, cv.width, cv.height);
+  ctx.setTransform(view.s, 0, 0, view.s, view.ox, view.oy);
+  SCENE_FN[i](p, lt);
+  ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1; ctx.textAlign = 'left';
+  const v = ctx.createRadialGradient(W / 2, H / 2, H * .45, W / 2, H / 2, H * .95);
+  v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.45)');
+  ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
+  const fade = Math.max(i > 0 ? 1 - span(p, 0, .04) : 0, span(p, .97, 1));
+  if (fade > 0) { ctx.fillStyle = `rgba(0,0,0,${fade})`; ctx.fillRect(0, 0, W, H); }
+  const marks = SCENES[i].marks;
+  let lbl = marks[0][1]; for (const [m, l] of marks) if (p >= m) lbl = l;
+  if (ui.clock.textContent !== lbl) ui.clock.textContent = lbl;
+  ui.lower.classList.toggle('show', lt > .8 && lt < DUR - .6);
+  segs.forEach((el, j) => { el.firstChild.style.width = ((j < i ? 1 : j > i ? 0 : p) * 100).toFixed(2) + '%'; });
+  ui.time.textContent = fmt(T) + ' / ' + fmt(TOTAL);
+}
+
+/* ---------- controls ---------- */
+const playBtn = $('play');
+function setPlaying(v) {
+  playing = v; last = performance.now();
+  playBtn.classList.toggle('paused', !v);
+  playBtn.setAttribute('aria-label', v ? 'Pauzeren' : 'Afspelen');
+}
+function jump(d) {
+  const i = Math.min(SCENES.length - 1, Math.floor(T / DUR)), t = T - i * DUR;
+  let j = i + d;
+  if (d < 0 && t > 1.5) j = i;
+  T = ((j + SCENES.length) % SCENES.length) * DUR + .001;
+}
+playBtn.addEventListener('click', () => setPlaying(!playing));
+$('prev').addEventListener('click', () => jump(-1));
+$('next').addEventListener('click', () => jump(1));
+cv.addEventListener('click', () => setPlaying(!playing));
+window.addEventListener('keydown', e => {
+  if (e.code === 'Space') { e.preventDefault(); setPlaying(!playing); }
+  else if (e.code === 'ArrowRight') jump(1);
+  else if (e.code === 'ArrowLeft') jump(-1);
+  else if (e.key === 'h' || e.key === 'H') document.body.classList.toggle('clean');
+  wake();
+});
+let idleTimer = 0;
+function wake() {
+  document.body.classList.remove('idle');
+  clearTimeout(idleTimer);
+  idleTimer = setTimeout(() => { if (playing) document.body.classList.add('idle'); }, 3000);
+}
+window.addEventListener('pointermove', wake);
+window.addEventListener('pointerdown', wake);
+wake();
+// read-only view of the timeline for music.js
+window.asi = { get T() { return T; }, get playing() { return playing; }, DUR, TOTAL, scenes: SCENES.length };
+// ?t=40 starts at second 40, ?paused pauses right away
+const q = new URLSearchParams(location.search);
+if (q.has('t')) T = clamp(parseFloat(q.get('t')) || 0, 0, TOTAL - .01);
+if (q.has('paused')) setPlaying(false);
+if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) setPlaying(false);
+
+function resize() {
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  cv.width = Math.round(window.innerWidth * dpr); cv.height = Math.round(window.innerHeight * dpr);
+  // cover the window, but on tall (portrait) screens keep at least ~620 px of the stage width in view
+  view.s = Math.min(Math.max(cv.width / W, cv.height / H), cv.width / 620);
+  view.ox = (cv.width - W * view.s) / 2; view.oy = (cv.height - H * view.s) / 2;
+  draw();
+}
+window.addEventListener('resize', resize);
+
+function loop(now) {
+  const dt = clamp((now - last) / 1000, 0, .1); last = now;   // the first frame can be stamped before `last`
+  if (playing) T = (T + dt) % TOTAL;
+  draw();
+  requestAnimationFrame(loop);
+}
+resize();
+requestAnimationFrame(loop);
+})();
+
+</script>
+<script>
+/* Muziek bij The AI Revolution (Wait But Why).
+   Standaard: een zelf gegenereerde synthesizer-score in de stijl van Vangelis (Blade Runner) en Tangerine Dream:
+   brede analoge pads, een sequencer-baslijn die steeds sneller gaat, glazen belletjes, data-piepjes en een
+   terugkerend thema. Scène 1 begint in 1750 op een klavecimbel. Alles wordt live gemaakt met de Web Audio API.
+   Eigen muziek: zet een bestand in muziek/soundtrack.mp3, of kies er een met de muzieknoot-knop. */
+(() => {
+const H = window.asi;
+if (!H) return;
+const DUR = H.DUR;
+const $ = id => document.getElementById(id);
+const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const hash = n => { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
+const freq = m => 440 * Math.pow(2, (m - 69) / 12);
+
+/* ---------- de score ---------- */
+// akkoord: [bas, ...padnoten] in MIDI
+const CH = {
+  Am: [33, 45, 52, 57, 60, 64], Asus2: [33, 45, 52, 57, 59, 64],
+  F: [29, 41, 48, 53, 57, 60], Fmaj7: [29, 41, 48, 52, 57, 60],
+  C: [36, 48, 55, 60, 64, 67], G: [31, 43, 50, 55, 59, 62],
+  Em: [28, 40, 47, 52, 55, 59], E: [28, 40, 47, 52, 56, 59], Esus: [28, 40, 47, 52, 57, 59],
+  Dm: [26, 38, 45, 50, 53, 57],
+};
+const BEAT = .6; // 100 bpm: 20 tellen per scène
+// het thema: [noot, tellen]
+const THEME = [[69, 2], [72, 1], [76, 3], [74, 1], [72, 1], [71, 2], [72, 2], [69, 4]];
+const up = (notes, d) => notes.map(([m, b]) => [m + d, b]);
+const THEME_MAJ = [[72, 2], [76, 1], [79, 3], [77, 1], [76, 1], [74, 2], [76, 2], [72, 4]];
+const RISE = [57, 60, 62, 64, 67, 69, 72, 74, 76, 79, 81, 84, 86, 88].map(m => [m, 1]);
+/* per scène:
+   ch/i      akkoorden en intensiteit (begin → eind), from: pas vanaf dat moment
+   pluck     klavecimbel: [akkoorden, van, tot]
+   seq       sequencer-bas: [sterkte, van, tot, noten per tel aan het begin, aan het eind]
+   kick      zachte basdrum: [van, tot, om de hoeveel tellen, sterkte]
+   bells     glazen belletjes (dichtheid), box: speeldoos [van, tot], blips: data-piepjes [dichtheid, van, tot]
+   lead      melodie: { from, notes, vol }
+   swell     koperachtig aanzwellend akkoord met klap op p, boom: alleen de klap */
+const SCORE = [
+  { ch: ['Fmaj7', 'Am'], from: .44, i: [.3, .5], pluck: [['Am', 'Dm', 'E', 'Am'], 0, .42], bells: .4, boom: [.44] },        // tijdreiziger
+  { ch: ['Am', 'F', 'C', 'G'], i: [.35, .65], seq: [.75, .04, 1, 1, 4] },                                                  // steeds sneller
+  { ch: ['Am', 'F', 'C', 'G'], i: [.35, .5], seq: [.4, 0, 1, 2, 2], lead: { from: .08, notes: THEME, vol: .5 } },          // waarom we het niet zien
+  { ch: ['Asus2', 'Fmaj7', 'Am'], i: [.25, .6], bells: .6, swell: [.6] },                                                  // drie niveaus
+  { ch: ['C', 'G', 'Am', 'F'], i: [.4, .5], seq: [.5, 0, 1, 4, 4], blips: [.8, .08, 1] },                                  // smalle AI overal
+  { ch: ['Em', 'C'], i: [.2, .3], bells: .4, blips: [.5, 0, .48], box: [.5, 1] },                                         // moeilijk is makkelijk
+  { ch: ['Am', 'F', 'C', 'Esus'], i: [.45, .7], seq: [.7, 0, 1, 4, 4], kick: [.5, 1, 2, .6] },                             // rekenkracht
+  { ch: ['Dm', 'Am', 'F', 'C'], i: [.45, .6], seq: [.6, 0, 1, 4, 4], blips: [.6, 0, 1], kick: [.55, .85, 1, .7] },         // een brein bouwen
+  { ch: ['Am', 'G', 'F', 'E'], i: [.55, .7], seq: [.9, 0, 1, 4, 6], kick: [0, 1, 1, .8] },                                 // sneller dan biologie
+  { ch: ['Fmaj7', 'Am', 'F', 'Esus'], i: [.3, .65], lead: { from: .08, notes: RISE, vol: .55 }, bells: .2, swell: [.72] }, // de trap
+  { ch: ['Am', 'F', 'C', 'G'], i: [.5, 1], seq: [1, 0, .96, 2, 8], kick: [.3, .96, 1, 1], swell: [.62] },                  // intelligentie-explosie
+  { ch: ['Dm', 'Am'], i: [.3, .45], kick: [.1, .86, 2, .5], bells: .25, boom: [.86] },                                    // evenwichtsbalk
+  { ch: ['F', 'C', 'G', 'Am'], i: [.4, .55], seq: [.5, 0, 1, 4, 4], bells: .3 },                                          // wanneer?
+  { ch: ['C', 'G', 'Am', 'Em'], i: [.4, .45], lead: { from: .08, notes: THEME_MAJ, vol: .55 } },                         // twee kampen
+  { ch: ['C', 'Am', 'Dm', 'E'], i: [.3, .85], box: [0, .42], seq: [.8, .42, .96, 4, 4], kick: [.62, .96, 1, .9], boom: [.6] }, // Turry
+  { ch: ['F', 'C', 'G', 'Am'], i: [.6, 1], seq: [.6, .1, .95, 4, 4], kick: [.3, .95, 1, .8], lead: { from: .08, notes: up(THEME, 12), vol: .8 } }, // jij bent hier
+];
+const SEQ = [0, 2, 1, 2, 3, 2, 1, 0];
+
+const EV = [];
+SCORE.forEach((s, i) => {
+  const base = i * DUR, from = s.from || 0, n = s.ch.length, slot = (1 - from) * DUR / n;
+  const chordAt = t => CH[s.ch[clamp(Math.floor((t - base - from * DUR) / slot), 0, n - 1)]];
+  const beats = (a, z, step, fn) => { for (let k = 0, t = base + Math.ceil(a * DUR / step - 1e-6) * step; t < base + z * DUR - .01; k++, t += step) fn(t, k); };
+  s.ch.forEach((c, k) => EV.push({
+    t: base + from * DUR + k * slot, type: 'pad', ch: CH[c], dur: slot,
+    inten: lerp(s.i[0], s.i[1], n > 1 ? k / (n - 1) : 0), atk: from ? .3 : 1.6,
+  }));
+  if (s.pluck) {
+    const [chs, a, z] = s.pluck, len = (z - a) * DUR / chs.length;
+    beats(a, z, BEAT / 4, (t, k) => {
+      const c = CH[chs[Math.min(chs.length - 1, Math.floor((t - base - a * DUR) / len))]], st = k % 8;
+      EV.push({ t, type: 'pluck', m: st === 0 ? c[1] + 12 : c[[2, 3, 4, 5, 4, 3, 4, 3][st]] + 12, vol: st === 0 ? 1 : .75 });
+    });
+  }
+  if (s.seq) {
+    const [lvl, a, z, r0, r1] = s.seq, t0 = base + a * DUR, t1 = base + z * DUR;
+    for (let k = 0, t = t0; t < t1 - .01; k++) {
+      const c = chordAt(t), q = (t - t0) / (t1 - t0);
+      const notes = [c[0] + 12, c[0] + 24, c[2], c[4]];
+      EV.push({ t, type: 'seq', m: notes[SEQ[k % 8]], vol: lvl * clamp((t - t0) / 2.5, .35, 1), bright: q });
+      t += BEAT / lerp(r0, r1, q * q);
+    }
+  }
+  if (s.kick) { const [a, z, every, vol] = s.kick; beats(a, z, BEAT * every, t => EV.push({ t, type: 'kick', vol })); }
+  if (s.bells) beats(.03, .92, BEAT / 2, (t, k) => {
+    if (hash(i * 97 + k) > s.bells * .5) return;
+    const c = chordAt(t);
+    EV.push({ t, type: 'bell', m: c[2 + Math.floor(hash(i * 13 + k) * 4)] + (hash(k * 5 + i) > .5 ? 24 : 12), vol: .6 + .4 * hash(k + i) });
+  });
+  if (s.box) beats(s.box[0], s.box[1], BEAT / 2, (t, k) => {
+    const c = chordAt(t);
+    EV.push({ t, type: 'bell', m: c[[2, 3, 4, 5, 4, 3][k % 6]] + 24, vol: .55 });
+  });
+  if (s.blips) { const [d, a, z] = s.blips; beats(a, z, BEAT / 4, (t, k) => {
+    if (hash(i * 31 + k * 1.7) > d * .3) return;
+    const c = chordAt(t);
+    EV.push({ t, type: 'blip', m: c[2 + Math.floor(hash(k * 3 + i) * 4)] + (hash(k + i * 7) > .5 ? 36 : 24), vol: .5 + .5 * hash(k * 11) });
+  }); }
+  if (s.lead) {
+    let t = base + s.lead.from * DUR;
+    for (const [m, b] of s.lead.notes) { EV.push({ t, type: 'lead', m, dur: b * BEAT, vol: s.lead.vol }); t += b * BEAT; }
+  }
+  for (const p of s.swell || []) {
+    const t = base + p * DUR, d = Math.min(2.2, t - base);
+    EV.push({ t: t - d, type: 'swell', ch: chordAt(t), dur: d });
+    EV.push({ t, type: 'boom' });
+  }
+  for (const p of s.boom || []) {
+    const t = base + p * DUR, d = Math.min(1.8, t - base);
+    if (d > .3) EV.push({ t: t - d, type: 'riser', dur: d });
+    EV.push({ t, type: 'boom' });
+  }
+});
+EV.sort((a, b) => a.t - b.t);
+
+/* ---------- synthese ---------- */
+let ac = null, master, comp, revIn, bus = null, dsend = null, noise;
+let muted = false, mode = 'synth', ownUrl = null, fileOk = false;
+
+function initAudio() {
+  ac = new (window.AudioContext || window.webkitAudioContext)();
+  comp = ac.createDynamicsCompressor();
+  comp.threshold.value = -16; comp.ratio.value = 4; comp.attack.value = .01; comp.release.value = .3;
+  master = ac.createGain(); master.gain.value = muted ? 0 : .9;
+  master.connect(comp); comp.connect(ac.destination);
+  // galm: zelf gemaakte impulsrespons van 4 seconden
+  const len = ac.sampleRate * 4, ir = ac.createBuffer(2, len, ac.sampleRate);
+  for (let c = 0; c < 2; c++) { const d = ir.getChannelData(c); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3); }
+  const conv = ac.createConvolver(); conv.buffer = ir;
+  revIn = ac.createGain(); revIn.gain.value = .5;
+  revIn.connect(conv); conv.connect(master);
+  noise = ac.createBuffer(1, ac.sampleRate * 3, ac.sampleRate);
+  const nd = noise.getChannelData(0); for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
+}
+function newBus() {
+  if (bus) { const old = bus; old.gain.setTargetAtTime(0, ac.currentTime, .06); setTimeout(() => old.disconnect(), 800); }
+  bus = ac.createGain(); bus.connect(master); bus.connect(revIn);
+  // echo op driekwart tel, die mee uitdooft met de bus
+  dsend = ac.createGain();
+  const dl = ac.createDelay(2), fb = ac.createGain(), lp = ac.createBiquadFilter();
+  dl.delayTime.value = BEAT * .75; fb.gain.value = .38; lp.type = 'lowpass'; lp.frequency.value = 2600;
+  dsend.connect(dl); dl.connect(lp); lp.connect(fb); fb.connect(dl); lp.connect(bus);
+}
+function osc(type, f, t, end, dest, gain = 1, detune = 0) {
+  const o = ac.createOscillator(); o.type = type; o.frequency.value = f; o.detune.value = detune;
+  let node = o;
+  if (gain !== 1) { const g = ac.createGain(); g.gain.value = gain; o.connect(g); node = g; }
+  node.connect(dest); o.start(t); o.stop(end);
+  return o;
+}
+function env(t, peak, atk, decay) { // gain met korte aanzet en exponentieel uitsterven
+  const g = ac.createGain(); g.gain.setValueAtTime(0, t);
+  g.gain.linearRampToValueAtTime(peak, t + atk); g.gain.setTargetAtTime(0, t + atk, decay);
+  return g;
+}
+function lowpass(f, q = 1) { const b = ac.createBiquadFilter(); b.type = 'lowpass'; b.frequency.value = f; b.Q.value = q; return b; }
+
+function pad(e, t, dur, atk) { // brede analoge pad met langzaam ademend filter
+  const end = t + dur + 4, inten = e.inten;
+  const lp = lowpass(250, 1.5);
+  lp.frequency.setValueAtTime(250, t); lp.frequency.linearRampToValueAtTime(700 + 2000 * inten, t + atk * 1.5);
+  lp.frequency.linearRampToValueAtTime(500 + 1400 * inten, t + dur);
+  const lfo = ac.createOscillator(), lg = ac.createGain();
+  lfo.frequency.value = .17; lg.gain.value = 150 + 250 * inten; lfo.connect(lg); lg.connect(lp.frequency); lfo.start(t); lfo.stop(end);
+  const g = ac.createGain(); g.gain.setValueAtTime(0, t);
+  g.gain.linearRampToValueAtTime(1, t + atk); g.gain.setValueAtTime(1, t + dur); g.gain.setTargetAtTime(0, t + dur, .8);
+  lp.connect(g); g.connect(bus);
+  const v = .014 * (.5 + inten);
+  e.ch.slice(1).forEach((m, k) => {
+    const f = freq(m);
+    osc('sawtooth', f, t, end, lp, v, -8 + k);
+    osc('sawtooth', f, t, end, lp, v, 8 - k);
+  });
+  const fb = freq(e.ch[0]);
+  osc('sine', fb, t, end, g, v * 5);
+  osc('sawtooth', fb * 2, t, end, lp, v * .9);
+}
+function seq(e, t) { // Berlijnse sequencer-bas
+  const lp = lowpass(400, 9);
+  lp.frequency.setValueAtTime(500 + 2200 * (.4 + .6 * e.bright) * e.vol, t); lp.frequency.exponentialRampToValueAtTime(160, t + .16);
+  const g = env(t, .1 * e.vol, .004, .07);
+  lp.connect(g); g.connect(bus);
+  const f = freq(e.m);
+  osc('sawtooth', f, t, t + .45, lp, 1, -5);
+  osc('square', f / 2, t, t + .45, lp, .5);
+}
+function pluck(e, t) { // klavecimbel
+  const hp = ac.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 220;
+  const lp = lowpass(5000);
+  const g = env(t, .07 * e.vol, .002, .2);
+  hp.connect(lp); lp.connect(g); g.connect(bus); g.connect(dsend);
+  const f = freq(e.m);
+  osc('sawtooth', f, t, t + 1.2, hp, .6);
+  osc('square', f * 2, t, t + 1.2, hp, .22, 4);
+}
+function bell(e, t) { // glas
+  const f = freq(e.m);
+  const g = env(t, .05 * e.vol, .005, 1); g.connect(bus); g.connect(dsend);
+  osc('sine', f, t, t + 5, g);
+  const g2 = env(t, .016 * e.vol, .003, .25); g2.connect(bus);
+  osc('sine', f * 3.5, t, t + 2, g2);
+}
+function blip(e, t) { // data-piepje
+  const lp = lowpass(4500);
+  const g = env(t, .028 * e.vol, .002, .03);
+  lp.connect(g); g.connect(bus); g.connect(dsend);
+  osc('square', freq(e.m), t, t + .2, lp);
+}
+function lead(e, t) { // de melodie: twee zaagtanden met vibrato
+  const end = t + e.dur + 1.5;
+  const lp = lowpass(1400 + 1400 * e.vol, 2);
+  const g = ac.createGain(); g.gain.setValueAtTime(0, t);
+  g.gain.linearRampToValueAtTime(.06 * e.vol, t + .07); g.gain.setValueAtTime(.06 * e.vol, t + e.dur - .05); g.gain.setTargetAtTime(0, t + e.dur - .05, .18);
+  lp.connect(g); g.connect(bus); g.connect(dsend);
+  const vib = ac.createOscillator(), vg = ac.createGain();
+  vib.frequency.value = 5.2; vg.gain.setValueAtTime(0, t); vg.gain.linearRampToValueAtTime(9, t + Math.min(.6, e.dur)); vib.connect(vg); vib.start(t); vib.stop(end);
+  const f = freq(e.m);
+  for (const [type, d, gn] of [['sawtooth', -6, .7], ['sawtooth', 6, .7], ['triangle', 0, 1]]) {
+    const o = osc(type, f, t, end, lp, gn, d); vg.connect(o.detune);
+  }
+}
+function kick(e, t) { // zachte basdrum
+  const o = ac.createOscillator(); o.type = 'sine';
+  o.frequency.setValueAtTime(130, t); o.frequency.exponentialRampToValueAtTime(42, t + .14);
+  const g = env(t, .32 * e.vol, .003, .14); o.connect(g); g.connect(master); o.start(t); o.stop(t + 1);
+}
+function swell(e, t) { // aanzwellend koper-akkoord
+  const end = t + e.dur + 2;
+  const lp = lowpass(250, 3);
+  lp.frequency.setValueAtTime(250, t); lp.frequency.exponentialRampToValueAtTime(3200, t + e.dur);
+  lp.frequency.setTargetAtTime(600, t + e.dur, .5);
+  const g = ac.createGain(); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(.03, t + e.dur); g.gain.setTargetAtTime(0, t + e.dur, .6);
+  lp.connect(g); g.connect(bus);
+  for (const m of [e.ch[0] + 12, ...e.ch.slice(2)]) for (const d of [-10, 0, 10]) osc('sawtooth', freq(m), t, end, lp, 1, d);
+}
+function boom(t) { // diepe klap
+  const o = ac.createOscillator(); o.type = 'sine';
+  o.frequency.setValueAtTime(75, t); o.frequency.exponentialRampToValueAtTime(26, t + 2.2);
+  const g = env(t, .45, .01, 1.1); o.connect(g); g.connect(bus); o.start(t); o.stop(t + 5);
+  const s = ac.createBufferSource(); s.buffer = noise;
+  const nl = lowpass(900);
+  const ng = env(t, .14, .005, .7); s.connect(nl); nl.connect(ng); ng.connect(bus); s.start(t, 0, 2.9);
+}
+function riser(e, t) { // aanzwellen voor de klap
+  const s = ac.createBufferSource(); s.buffer = noise;
+  const bp = ac.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 1.2;
+  bp.frequency.setValueAtTime(250, t); bp.frequency.exponentialRampToValueAtTime(5000, t + e.dur);
+  const g = ac.createGain(); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(.2, t + e.dur); g.gain.linearRampToValueAtTime(0, t + e.dur + .06);
+  s.connect(bp); bp.connect(g); g.connect(bus); s.start(t, 0, e.dur + .1);
+}
+function play(e, t) {
+  switch (e.type) {
+    case 'pad': pad(e, t, e.dur, e.atk); break;
+    case 'seq': seq(e, t); break;
+    case 'pluck': pluck(e, t); break;
+    case 'bell': bell(e, t); break;
+    case 'blip': blip(e, t); break;
+    case 'lead': lead(e, t); break;
+    case 'kick': kick(e, t); break;
+    case 'swell': swell(e, t); break;
+    case 'boom': boom(t); break;
+    case 'riser': riser(e, t); break;
+  }
+}
+
+/* ---------- synchroon met de animatie ---------- */
+const LOOK = .3;
+let anchor = 0, idx = 0;
+function reset(T) {
+  newBus();
+  anchor = ac.currentTime - T;
+  idx = EV.findIndex(e => e.t >= T); if (idx < 0) idx = EV.length;
+  for (let k = idx - 1; k >= 0; k--) { // het akkoord dat al klinkt, meteen laten klinken
+    const e = EV[k];
+    if (e.type !== 'pad') continue;
+    if (e.t + e.dur > T + .3) pad(e, ac.currentTime + .02, e.t + e.dur - T, .5);
+    break;
+  }
+}
+function schedule(T) {
+  const drift = ac.currentTime - anchor - T;
+  if (Math.abs(drift) > .04) anchor = ac.currentTime - T;
+  while (idx < EV.length && EV[idx].t < T + LOOK) {
+    const e = EV[idx++], at = anchor + e.t;
+    if (at < ac.currentTime - .05 && e.type !== 'pad' && e.type !== 'boom' && e.type !== 'swell') continue;
+    play(e, Math.max(at, ac.currentTime + .005));
+  }
+}
+
+const track = $('track'), tag = $('music-tag'), muteBtn = $('mute'), ownBtn = $('own'), ownFile = $('own-file');
+track.addEventListener('loadedmetadata', () => { fileOk = true; if (!ownUrl && started) setMode('file'); });
+track.addEventListener('error', () => { fileOk = false; if (mode === 'file') setMode('synth'); });
+
+let started = false, lastT = H.T, lastWall = performance.now() / 1000, wasPlaying = H.playing;
+function setMode(m) {
+  mode = m;
+  ownBtn.classList.toggle('active', m === 'file');
+  ownBtn.setAttribute('aria-label', m === 'file' ? 'Terug naar de ingebouwde score' : 'Eigen muziekbestand kiezen');
+  ownBtn.title = ownBtn.getAttribute('aria-label');
+  if (!ac) return;
+  if (m === 'file') {
+    if (bus) { newBus(); }
+    master.gain.setTargetAtTime(0, ac.currentTime, .05);
+    track.currentTime = track.duration ? H.T % track.duration : 0;
+    track.muted = muted;
+    if (H.playing) track.play().catch(() => {});
+    const name = ownUrl ? ownFile.files[0].name.replace(/\.[^.]+$/, '') : 'soundtrack';
+    tag.textContent = '♪ ' + name;
+  } else {
+    track.pause();
+    master.gain.setTargetAtTime(muted ? 0 : .9, ac.currentTime, .05);
+    reset(H.T);
+    tag.textContent = '♪ synthesizerscore in de stijl van Vangelis';
+  }
+}
+// De muziek start vanzelf. Houdt de browser geluid tegen tot de eerste klik of toets,
+// dan start die eerste klik of spatie alleen de muziek en pauzeert hij de animatie niet.
+let locked = false;
+function start() {
+  if (started) return;
+  started = true;
+  initAudio();
+  if (track.readyState >= 1 && !track.error) fileOk = true;
+  setMode(fileOk ? 'file' : 'synth');
+  if (!H.playing) { ac.suspend(); return; }
+  ac.resume().catch(() => {});
+  setTimeout(() => { if (ac.state !== 'running') locked = true; }, 300);
+}
+function unlock(e) {
+  if (!locked) return;
+  locked = false;
+  ac.resume().then(() => { if (mode === 'file') setMode('file'); else reset(H.T); }).catch(() => {});
+  if (e.type === 'keydown' ? e.code === 'Space' : !e.target.closest('#controls')) {
+    e.preventDefault(); e.stopImmediatePropagation();
+    if (e.type === 'pointerdown') window.addEventListener('click', ev => ev.stopImmediatePropagation(), { capture: true, once: true });
+  }
+}
+window.addEventListener('pointerdown', unlock, true);
+window.addEventListener('keydown', unlock, true);
+window.addEventListener('keydown', e => { if (e.key === 'm' || e.key === 'M') toggleMute(); });
+start();
+
+function toggleMute() {
+  muted = !muted;
+  muteBtn.classList.toggle('off', muted);
+  muteBtn.setAttribute('aria-label', muted ? 'Muziek aanzetten' : 'Muziek dempen');
+  muteBtn.title = muted ? 'Muziek aanzetten (M)' : 'Muziek dempen (M)';
+  track.muted = muted;
+  if (ac && mode === 'synth') master.gain.setTargetAtTime(muted ? 0 : .9, ac.currentTime, .08);
+}
+muteBtn.addEventListener('click', toggleMute);
+ownBtn.addEventListener('click', () => {
+  if (mode === 'file') { setMode('synth'); return; }
+  ownFile.click();
+});
+ownFile.addEventListener('change', () => {
+  const f = ownFile.files[0]; if (!f) return;
+  if (ownUrl) URL.revokeObjectURL(ownUrl);
+  ownUrl = URL.createObjectURL(f);
+  track.src = ownUrl;
+  track.addEventListener('loadedmetadata', () => setMode('file'), { once: true });
+});
+
+document.addEventListener('visibilitychange', () => {
+  if (!ac) return;
+  if (document.hidden) { ac.suspend(); track.pause(); }
+  else if (H.playing) { ac.resume(); if (mode === 'file') track.play().catch(() => {}); }
+});
+
+setInterval(() => {
+  const T = H.T, playing = H.playing, wall = performance.now() / 1000;
+  const expected = lastT + (wasPlaying ? wall - lastWall : 0);
+  const jumped = Math.abs(T - expected) > .45;
+  if (ac && !document.hidden) {
+    if (playing !== wasPlaying) {
+      if (playing) { ac.resume(); if (mode === 'file') track.play().catch(() => {}); }
+      else { ac.suspend(); track.pause(); }
+    }
+    if (mode === 'file') {
+      if (jumped && track.duration) track.currentTime = T % track.duration;
+    } else if (playing || jumped) {
+      if (jumped) reset(T);
+      if (playing && ac.state === 'running') schedule(T);
+    }
+  }
+  lastT = T; lastWall = wall; wasPlaying = playing;
+}, 50);
+})();
+
+</script>
+</body>
+</html>

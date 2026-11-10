@@ -1,0 +1,129 @@
+/* Filmisch, één donkere look over de 3D-wereld (opzet als humanoid-showreel).
+   Kleuren uit de steentijd: houtskool, bot en okergeel. */
+:root {
+  --ink: #f3eee3;            /* bot */
+  --muted: rgba(243, 238, 227, 0.68);
+  --dim: rgba(243, 238, 227, 0.45);
+  --ochre: #e0a845;          /* gele oker */
+  --panel: rgba(16, 13, 10, 0.5);
+  --line: rgba(243, 238, 227, 0.14);
+  --display: 'Young Serif', Georgia, 'Times New Roman', serif;
+  --sans: 'Instrument Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --mono: 'IBM Plex Mono', ui-monospace, Consolas, monospace;
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; background: #0b0907; color: var(--ink); font-family: var(--sans); overflow: hidden; }
+
+#scene { position: fixed; inset: 0; width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; }
+#scene.drag { cursor: grabbing; }
+#vignette { position: fixed; inset: 0; pointer-events: none; background: radial-gradient(ellipse at center, transparent 55%, rgba(0, 0, 0, 0.5) 100%); }
+#fade { position: fixed; inset: 0; background: #000; pointer-events: none; opacity: 1; }
+
+.overlay { z-index: 3; pointer-events: none; transition: opacity 0.4s; }
+body.clean .overlay, body.clean #vignette { opacity: 0 !important; }
+
+/* ------------------------------------------------------------ kop + klok */
+#kop { position: fixed; top: 20px; left: 24px; text-shadow: 0 1px 10px rgba(0, 0, 0, 0.6); }
+.eyebrow { font: 600 11px/1 var(--sans); letter-spacing: 0.14em; text-transform: uppercase; color: var(--ochre); }
+.naam { margin-top: 6px; font: 400 18px/1.1 var(--display); color: var(--ink); }
+
+#klok { position: fixed; top: 16px; right: 24px; display: grid; justify-items: end; gap: 4px; text-shadow: 0 1px 12px rgba(0, 0, 0, 0.6); }
+#clock { font: 500 clamp(26px, 3.6vw, 40px)/1 var(--mono); font-variant-numeric: tabular-nums; letter-spacing: 0.02em; }
+#scene-no { font: 500 11px/1 var(--mono); letter-spacing: 0.12em; color: var(--muted); text-transform: uppercase; }
+
+/* ------------------------------------------------------------ onderbalk-tekst */
+#lower {
+  position: fixed; left: clamp(16px, 4vw, 56px); bottom: 92px;
+  width: min(520px, calc(100vw - 32px));
+}
+#lower::before {
+  content: ''; display: block; height: 2px; width: 0; margin-bottom: 14px;
+  background: var(--ochre); transition: width 0.8s var(--ease);
+}
+#lower.show::before { width: 56px; }
+#lower > * { opacity: 0; transform: translateY(12px); transition: opacity 0.6s, transform 0.7s var(--ease); }
+#lower.show > * { opacity: 1; transform: none; }
+#lower.show #lower-title { transition-delay: 0.1s; }
+#lower.show #lower-txt { transition-delay: 0.25s; }
+#lower.show #lower-fact { transition-delay: 0.45s; }
+#lower-idx { display: block; margin-bottom: 8px; font: 500 11px/1 var(--mono); letter-spacing: 0.2em; color: var(--ochre); }
+#lower-title { font: 400 clamp(30px, 4.6vw, 54px)/1.02 var(--display); text-wrap: balance; text-shadow: 0 2px 24px rgba(0, 0, 0, 0.55); }
+#lower-txt { margin-top: 12px; font: 400 clamp(14px, 1.35vw, 17px)/1.5 var(--sans); color: var(--ink); text-shadow: 0 1px 14px rgba(0, 0, 0, 0.8); max-width: 60ch; }
+#lower-fact {
+  margin-top: 12px; padding: 9px 12px; font: 400 13px/1.45 var(--sans); color: var(--muted);
+  background: var(--panel); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  border-left: 2px solid var(--ochre); max-width: 60ch;
+}
+#lower-fact b { color: var(--ink); font-weight: 600; }
+
+/* ------------------------------------------------------------ bediening */
+#controls {
+  position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%);
+  width: min(800px, calc(100vw - 32px));
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 12px 6px 6px;
+  background: rgba(14, 11, 8, 0.62); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--line); border-radius: 12px;
+  z-index: 5; transition: opacity 0.5s;
+}
+body.idle #controls, body.idle #hint { opacity: 0; }
+body.idle { cursor: none; }
+#controls > button {
+  flex: none; width: 34px; height: 34px; border: 0; border-radius: 8px;
+  background: none; color: var(--ink); display: grid; place-items: center; cursor: pointer;
+}
+#controls > button:hover { background: rgba(255, 255, 255, 0.08); }
+button:focus-visible { outline: 2px solid var(--ochre); outline-offset: 1px; }
+button svg { width: 16px; height: 16px; fill: currentColor; }
+#play .i-play { display: none; }
+#play.paused .i-play { display: block; }
+#play.paused .i-pause { display: none; }
+
+#timeline { flex: 1; min-width: 0; display: flex; gap: 3px; height: 26px; align-items: center; margin-left: 6px; }
+.seg {
+  position: relative; flex: 1 1 0; min-width: 0; height: 26px; border: 0; background: none; cursor: pointer;
+}
+.seg::before { content: ''; position: absolute; left: 0; right: 0; top: 11px; height: 4px; background: rgba(255, 255, 255, 0.18); border-radius: 2px; transition: top 0.2s, height 0.2s; }
+#timeline:hover .seg::before { top: 9.5px; height: 7px; }
+.seg i { position: absolute; left: 0; top: 11px; height: 4px; width: 0; background: var(--ink); border-radius: 2px; transition: top 0.2s, height 0.2s; }
+#timeline:hover .seg i { top: 9.5px; height: 7px; }
+.seg.cur i { background: var(--ochre); }
+.seg span {
+  position: absolute; bottom: 28px; left: 50%; transform: translateX(-50%);
+  padding: 4px 7px; border-radius: 4px; background: rgba(0, 0, 0, 0.78); color: var(--ink);
+  font: 500 10px/1 var(--mono); letter-spacing: 0.08em; white-space: nowrap;
+  opacity: 0; pointer-events: none; transition: opacity 0.2s;
+}
+.seg:hover span, .seg:focus-visible span { opacity: 1; }
+#time { flex: none; min-width: 84px; text-align: right; font: 500 11px/1 var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+
+#hint {
+  position: fixed; right: 24px; bottom: 74px; z-index: 4;
+  font: 400 11px/1.4 var(--mono); letter-spacing: 0.04em; color: var(--dim);
+  pointer-events: none; transition: opacity 0.5s; text-align: right;
+}
+
+/* ------------------------------------------------------------ laden + fout */
+#loader { position: fixed; inset: 0; z-index: 10; display: grid; place-content: center; justify-items: center; gap: 14px; background: #0b0907; color: var(--muted); font: 400 14px/1.4 var(--sans); transition: opacity 0.7s; }
+#loader.gone { opacity: 0; pointer-events: none; }
+.spin { width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--line); border-top-color: var(--ochre); animation: spin 0.9s linear infinite; }
+#error { position: fixed; inset: 0; z-index: 11; display: grid; place-content: center; padding: 24px; text-align: center; color: var(--muted); background: #0b0907; }
+#error[hidden], #loader[hidden] { display: none; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+@media (max-width: 760px) {
+  #hint { display: none; }
+  #lower { bottom: 70px; }
+  #lower-txt { font-size: 14px; }
+  #lower-fact { display: none; }
+  #time { display: none; }
+  #kop { left: 16px; top: 14px; }
+  #klok { right: 16px; top: 12px; }
+  .naam { font-size: 15px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #lower > *, #lower::before { transition-duration: 0.01s !important; }
+}

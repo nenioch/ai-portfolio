@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Portfolio</title>
+<style>
+  :root { --bg:#0a0c12; --text:#fff; --hmuted:#c3cadb; --muted:#c3cadb; --accent:#ff8a3d; --ctl:#1b2030; --ctlb:#2c3550; --gap:6px; --head:64px; }
+  :root[data-theme="light"] { --bg:#eef1f6; --text:#151a26; --hmuted:#5d677c; --accent:#e5601a; --ctl:#fff; --ctlb:#cfd6e4; }
+  * { box-sizing: border-box; }
+  html, body { margin:0; background:var(--bg); color:var(--text); font-family:system-ui,-apple-system,"Segoe UI",sans-serif; }
+  header { height:var(--head); display:flex; align-items:baseline; gap:16px; padding:18px 24px 0; }
+  h1 { margin:0; font-size:1.5rem; letter-spacing:-.01em; }
+  header p { margin:0; color:var(--hmuted); font-size:.9rem; }
+  .ctl { margin-left:auto; display:flex; gap:8px; align-self:center; margin-top:-8px; }
+  .ctl button { font:inherit; font-size:.8rem; font-weight:600; color:var(--text); background:var(--ctl); border:1px solid var(--ctlb); border-radius:999px; padding:6px 14px; cursor:pointer; }
+  .ctl button { display:inline-flex; align-items:center; gap:7px; }
+  .ctl button:hover { border-color:var(--accent); }
+  main {
+    display:grid; gap:var(--gap); padding:0 16px 16px;
+    grid-template-columns:repeat(4,1fr);
+    grid-template-rows:repeat(3,1fr);
+    height:calc(100vh - var(--head));
+    min-height:600px;
+    overflow:clip; /* de hover-zoom van tegels aan de rand mag geen scrollbalken veroorzaken */
+  }
+  a.card {
+    position:relative; display:block; overflow:hidden; border-radius:8px;
+    color:inherit; text-decoration:none; background:#000; min-height:0;
+    transition:transform .2s ease, box-shadow .2s ease; z-index:0;
+  }
+  a.card:hover, a.card:focus-visible {
+    transform:scale(1.03); z-index:2; outline:2px solid var(--accent);
+    box-shadow:0 14px 40px rgba(0,0,0,.7);
+  }
+  .thumb, .thumb img { position:absolute; inset:0; width:100%; height:100%; }
+  .thumb img { object-fit:cover; display:block; transition:transform .5s ease; }
+  a.card:hover .thumb img { transform:scale(1.06); }
+  .info {
+    position:absolute; left:0; right:0; bottom:0; padding:40px 16px 14px; color:#fff;
+    background:linear-gradient(to top, rgba(0,0,0,.88), rgba(0,0,0,.55) 55%, transparent);
+  }
+  .tag { font-size:.68rem; text-transform:uppercase; letter-spacing:.09em; color:var(--accent); font-weight:700; }
+  .info h2 { margin:2px 0 0; font-size:clamp(1.05rem,1.6vw,1.5rem); text-shadow:0 2px 8px rgba(0,0,0,.8); }
+  .info p {
+    margin:0; font-size:.9rem; color:var(--muted);
+    max-height:0; opacity:0; overflow:hidden; transition:max-height .25s ease, opacity .25s ease, margin .25s ease;
+  }
+  a.card:hover .info p, a.card:focus-visible .info p { max-height:4em; opacity:1; margin-top:6px; }
+  footer { display:none; }
+  @media (max-width:1000px) {
+    main { grid-template-columns:repeat(2,1fr); grid-template-rows:none; grid-auto-rows:auto; height:auto; }
+    a.card { aspect-ratio:16/10; }
+    .info p { max-height:4em; opacity:1; margin-top:4px; }
+  }
+  @media (max-width:560px) { header { flex-direction:column; gap:2px; height:auto; padding-bottom:12px; } main { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>AI Portfolio</h1>
+  <p id="sub">Games, simulaties en presentaties, gebouwd met AI. Klik op een plaatje om te openen.</p>
+  <div class="ctl">
+    <button id="btn-lang" type="button" aria-label="Taal / Language"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><ellipse cx="12" cy="12" rx="4" ry="9.5"/><path d="M2.5 12h19M4 7h16M4 17h16"/></svg><span id="lang-txt">EN</span></button>
+    <button id="btn-theme" type="button" aria-label="Licht"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></svg></button>
+  </div>
+</header>
+
+<main>
+  <a class="card" data-k="rooi" href="rooi-harten-kart/rooi-harten-kart.html">
+    <div class="thumb"><img src="thumbs/rooi-harten-kart.jpg" alt="Rooi Harten Kart" loading="lazy"></div>
+    <div class="info"><span class="tag" data-t>Game</span><h2 data-h>Rooi Harten Kart</h2><p data-d>Kartrace door en rond het Missiehuis in Tilburg.</p></div>
+  </a>
+  <a class="card" data-k="oermens" href="oermens-dag/index.html">
+    <div class="thumb"><img src="thumbs/oermens-dag.jpg" alt="Dag van een oermens" loading="lazy"></div>
+    <div class="info"><span class="tag" data-t>Animatie</span><h2 data-h>Dag van een oermens</h2><p data-d>Een dag uit het leven van een prehistorisch mens.</p></div>
+  </a>
+  <a class="card" data-k="enterprise" href="enterprise-ai-presentatie/index.html">
+    <div class="thumb"><img src="thumbs/enterprise-ai-presentatie.jpg" alt="Enterprise AI Platform" loading="lazy"></div>
+    <div class="info"><span class="tag" data-t>Presentatie</span><h2 data-h>Enterprise AI Platform</h2><p data-d>Presentatie over een enterprise AI-platform.</p></div>
+  </a>
+  <a class="card" data-k="teno" href="tenochtitlan/index.html">
+    <div class="thumb"><img src="thumbs/tenochtitlan.jpg" alt="Tenochtitlan" loading="lazy"></div>
+    <div class="info"><span class="tag" data-t>3D-stad</span><h2 data-h>Tenochtitlan</h2><p data-d>De Azteekse hoofdstad in 1519, in 3D.</p></div>
+  </a>
+  <a class="card" data-k="maan" href="maanbasis/index.html">
+    <div class="thumb"><img src="thumbs/maanbasis.jpg" alt="Maanbasis" loading="lazy"></div>
+    <div class="info"><span class="tag" data-t>Strategie</span><h2 data-h>Maanbasis</h2><p data-d>Geen geld, alleen steen: bouw met robots een basis op de maan.</p></div>
+  </a>
+  <a class="card" data-k="kloof" href="kloofracer/index.html">
+    <div class="thumb"><img src="thumbs/kloofracer.jpg" alt="Kloofracer" loading="lazy"></div>
+    <div class="info"><span class="tag" data-t>Game</span><h2 data-h>Kloofracer</h2><p data-d>Race met een jetboot door een bergkloof.</p></div>
+  </a>
+  <a class="card" data-k="aigesch" href="ai-geschiedenis/index.html">
+    <div class="thumb"><img src="thumbs/ai-geschiedenis.jpg" alt="Geschiedenis van AI" loading="lazy"></div>
+    <div class="info"><span class="tag" data-t>Animatie</span><h2 data-h>Geschiedenis van AI</h2><p data-d>Van tandwiel tot taalmodel.</p></div>
+  </a>
+  <a class="card" data-k="stef" href="openstef-presentatie/index.html">
+    <div class="thumb"><img src="thumbs/openstef-presentatie.jpg" alt="OpenSTEF" loading="lazy"></div>
+    <div class="info"><span class="tag" data-t>Presentatie</span><h2 data-h>OpenSTEF</h2><p data-d>Presentatie over OpenSTEF.</p></div>
+  </a>
+  <a class="card" data-k="glijbaan" href="glijbaan-race/index.html">
+    <div class="thumb"><img src="thumbs/glijbaan-race.jpg" alt="Glijbaan Gekte" loading="lazy"></div>
+    <div class="info"><span class="tag" data-t>Game</span><h2 data-h>Glijbaan Gekte</h2><p data-d>Racen door een reuzenglijbaan met disco-tunnel.</p></div>
+  </a>
+  <a class="card" data-k="brave" href="brave-new-worlds/index.html">
+    <div class="thumb"><img src="thumbs/brave-new-worlds.jpg" alt="Brave New Worlds" loading="lazy"></div>
+    <div class="info"><span class="tag" data-t>Strategie</span><h2 data-h>Brave New Worlds</h2><p data-d>Kolonisatie van een nieuwe planeet.</p></div>
+  </a>
+  <a class="card" data-k="humanoid" href="humanoid-showreel/index.html">
+    <div class="thumb"><img src="thumbs/humanoid-showreel.jpg" alt="Humanoids Showreel" loading="lazy"></div>
+    <div class="info"><span class="tag" data-t>Animatie</span><h2 data-h>Humanoids Showreel</h2><p data-d>Humanoïde robots in verschillende scènes.</p></div>
+  </a>
+  <a class="card" data-k="bloomberg" href="bloomberg-terminal/index.html">
+    <div class="thumb"><img src="thumbs/bloomberg-terminal.jpg" alt="Market Terminal" loading="lazy"></div>
+    <div class="info"><span class="tag" data-t>Dashboard</span><h2 data-h>Market Terminal</h2><p data-d>Gesimuleerde beursterminal in Bloomberg-stijl.</p></div>
+  </a>
+</main>
+
+<footer>Elk project is een zelfstandige map met eigen index.html.</footer>
+<script>
+(function () {
+  var T = {
+    nl: {
+      sub: 'Games, simulaties en presentaties, gebouwd met AI. Klik op een plaatje om te openen.',
+      light: 'Licht', dark: 'Donker', other: 'EN',
+      tags: { game:'Game', anim:'Animatie', pres:'Presentatie', stad:'3D-stad', strat:'Strategie', dash:'Dashboard' }
+    },
+    en: {
+      sub: 'Games, simulations and presentations, built with AI. Click a picture to open it.',
+      light: 'Light', dark: 'Dark', other: 'NL',
+      tags: { game:'Game', anim:'Animation', pres:'Presentation', stad:'3D city', strat:'Strategy', dash:'Dashboard' }
+    }
+  };
+  var C = {
+    rooi:       { t:'game',  nl:['Rooi Harten Kart','Kartrace door en rond het Missiehuis in Tilburg.'], en:['Rooi Harten Kart','Kart race through and around the Missiehuis in Tilburg.'] },
+    oermens:    { t:'anim',  nl:['Dag van een oermens','Een dag uit het leven van een prehistorisch mens.'], en:['Day of a Caveman','A day in the life of a prehistoric human.'] },
+    enterprise: { t:'pres',  nl:['Enterprise AI Platform','Presentatie over een enterprise AI-platform.'], en:['Enterprise AI Platform','Presentation about an enterprise AI platform.'] },
+    teno:       { t:'stad',  nl:['Tenochtitlan','De Azteekse hoofdstad in 1519, in 3D.'], en:['Tenochtitlan','The Aztec capital in 1519, in 3D.'] },
+    maan:       { t:'strat', nl:['Maanbasis','Geen geld, alleen steen: bouw met robots een basis op de maan.'], en:['Moon Base','No money, only rock: build a moon base with robots.'] },
+    kloof:      { t:'game',  nl:['Kloofracer','Race met een jetboot door een bergkloof.'], en:['Canyon Racer','Race a jet boat through a mountain canyon.'] },
+    aigesch:    { t:'anim',  nl:['Geschiedenis van AI','Van tandwiel tot taalmodel.'], en:['History of AI','From cogwheel to language model.'] },
+    stef:       { t:'pres',  nl:['OpenSTEF','Presentatie over OpenSTEF.'], en:['OpenSTEF','Presentation about OpenSTEF.'] },
+    glijbaan:   { t:'game',  nl:['Glijbaan Gekte','Racen door een reuzenglijbaan met disco-tunnel.'], en:['Waterslide Madness','Racing down a giant waterslide with a disco tunnel.'] },
+    brave:      { t:'strat', nl:['Brave New Worlds','Kolonisatie van een nieuwe planeet.'], en:['Brave New Worlds','Colonize a new planet.'] },
+    humanoid:   { t:'anim',  nl:['Humanoids Showreel','Humanoïde robots in verschillende scènes.'], en:['Humanoids Showreel','Humanoid robots in different scenes.'] },
+    bloomberg:  { t:'dash',  nl:['Market Terminal','Gesimuleerde beursterminal in Bloomberg-stijl.'], en:['Market Terminal','Simulated Bloomberg-style market terminal.'] }
+  };
+  var ICON = { sun: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></svg>', moon: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 14.5A8.5 8.5 0 0 1 9.5 3.5a8.5 8.5 0 1 0 11 11z"/></svg>' };
+  var root = document.documentElement;
+  var lang = 'nl', theme = 'dark';
+  try { lang = localStorage.getItem('portfolio-lang') || (/^nl/i.test(navigator.language) ? 'nl' : 'en'); } catch (e) {}
+  try { theme = localStorage.getItem('portfolio-theme') || 'dark'; } catch (e) {}
+
+  function save(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+  function apply() {
+    var t = T[lang];
+    root.lang = lang;
+    root.setAttribute('data-theme', theme);
+    document.getElementById('sub').textContent = t.sub;
+    document.getElementById('lang-txt').textContent = t.other;
+    var bt = document.getElementById('btn-theme');
+    bt.innerHTML = theme === 'dark' ? ICON.sun : ICON.moon;
+    bt.setAttribute('aria-label', theme === 'dark' ? t.light : t.dark);
+    bt.title = bt.getAttribute('aria-label');
+    document.querySelectorAll('a.card').forEach(function (a) {
+      var c = C[a.getAttribute('data-k')]; if (!c) return;
+      a.querySelector('[data-t]').textContent = t.tags[c.t];
+      a.querySelector('[data-h]').textContent = c[lang][0];
+      a.querySelector('[data-d]').textContent = c[lang][1];
+      a.querySelector('img').alt = c[lang][0];
+    });
+  }
+  document.getElementById('btn-lang').addEventListener('click', function () { lang = lang === 'nl' ? 'en' : 'nl'; save('portfolio-lang', lang); apply(); });
+  document.getElementById('btn-theme').addEventListener('click', function () { theme = theme === 'dark' ? 'light' : 'dark'; save('portfolio-theme', theme); apply(); });
+  apply();
+})();
+</script></body>
+</html>

@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dag van een oermens</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Instrument+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<canvas id="scene" aria-label="3D-animatie van een dag in een kamp van jager-verzamelaars in de ijstijd"></canvas>
+<div id="vignette"></div>
+<div id="fade"></div>
+
+<header id="kop" class="overlay">
+  <p class="eyebrow">Laat-paleolithicum · ca. 30.000 jaar geleden</p>
+  <p class="naam">Dag van een oermens</p>
+</header>
+
+<div id="klok" class="overlay">
+  <span id="clock">06:00</span>
+  <span id="scene-no">scène 1 van 7</span>
+</div>
+
+<section id="lower" class="overlay" aria-live="polite">
+  <span id="lower-idx">01 / 07</span>
+  <h2 id="lower-title"></h2>
+  <p id="lower-txt"></p>
+  <p id="lower-fact"></p>
+</section>
+
+<div id="controls">
+  <button id="prev" type="button" aria-label="Vorige scène">
+    <svg viewBox="0 0 24 24"><path d="M6 5h2v14H6zM20 5v14L9 12z"/></svg>
+  </button>
+  <button id="play" type="button" aria-label="Pauzeren">
+    <svg class="i-pause" viewBox="0 0 24 24"><path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z"/></svg>
+    <svg class="i-play" viewBox="0 0 24 24"><path d="M7 4.5v15L19.5 12z"/></svg>
+  </button>
+  <button id="next" type="button" aria-label="Volgende scène">
+    <svg viewBox="0 0 24 24"><path d="M16 5h2v14h-2zM4 5v14l11-7z"/></svg>
+  </button>
+  <div id="timeline"></div>
+  <span id="time">0:00 / 0:00</span>
+</div>
+
+<div id="hint">Sleep om rond te kijken · scroll om te zoomen · spatie pauzeert · ← → scènes · H verbergt de tekst</div>
+
+<div id="loader"><div class="spin"></div><p>Het vuur wordt aangewakkerd…</p></div>
+<div id="error" hidden>Je browser ondersteunt geen WebGL, dus de animatie kan niet worden getoond.</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<!-- volgorde telt: elk bestand gebruikt wat eerder geladen is -->
+<script src="env.js"></script>
+<script src="mens.js"></script>
+<script src="dieren.js"></script>
+<script src="wereld.js"></script>
+<script src="dag.js"></script>
+<script src="camera.js"></script>
+<script src="main.js"></script>
+</body>
+</html>

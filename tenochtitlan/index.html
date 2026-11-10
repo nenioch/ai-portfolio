@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>Tenochtitlan</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya+Sans+SC:wght@500;700;800&family=Alegreya+Sans:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<canvas id="scene" aria-label="3D-diorama van Tenochtitlan, de Azteekse hoofdstad in het Texcocomeer"></canvas>
+
+<div id="loader">
+  <div class="spin"></div>
+  <p>De stad rijst op uit het meer…</p>
+</div>
+
+<!-- ------------------------------------------------------------- bovenbalk -->
+<header id="hud">
+  <div class="panel crest">
+    <span class="rank">Huey altepetl · 1519</span>
+    <span class="cityname">Tenochtitlan</span>
+  </div>
+
+  <div class="panel tijd">
+    <label for="tijd">Tijd <b id="tijd-lbl">16:00</b></label>
+    <input id="tijd" type="range" min="0" max="23.99" step="0.05" value="16">
+    <button id="btn-cyclus" class="tgl" type="button" title="Zon laten opkomen en ondergaan">Dagcyclus</button>
+  </div>
+
+  <div class="panel ctrl">
+    <button id="btn-draai" class="tgl" type="button" title="Langzaam ronddraaien als je niets doet">Draaiing</button>
+    <button id="btn-rand" class="tgl" type="button" title="Beeld meedraaien als de cursor de schermrand raakt">Randscroll</button>
+    <button id="btn-help" type="button" title="Uitleg">?</button>
+  </div>
+</header>
+
+<!-- ------------------------------------------------------------------ info -->
+<div id="info" class="panel" hidden>
+  <h3 id="info-naam"></h3>
+  <p id="info-tekst"></p>
+  <button id="info-los" type="button" hidden>Terug naar het midden</button>
+</div>
+
+<!-- ----------------------------------------------------------------- hulp -->
+<div id="help" hidden>
+  <div class="panel card">
+    <h2>Tenochtitlan</h2>
+    <p>De hoofdstad van de Azteken, zoals de Spanjaarden haar in 1519 zagen: een
+       eiland in het Texcocomeer met een raster van kanalen. In het midden het
+       heilige plein binnen de slangenmuur, met de Templo Mayor, de ronde tempel
+       van Ehecatl en het balspelveld. Eromheen paleizen, markten en gekalkte
+       huizen; verder naar buiten de chinampa's, drijvende akkers met maïs en
+       bloemen. Drie dijkwegen lopen naar de oever, langs de westelijke loopt het
+       aquaduct van Chapultepec. In het noorden ligt Tlatelolco met zijn grote markt.</p>
+    <h3>Besturing</h3>
+    <ul>
+      <li><b>Slepen</b>: om het draaipunt heen draaien</li>
+      <li><b>Rechts slepen</b> of <b>Shift + slepen</b>: het beeld verschuiven (ook met <b>W A S D</b>)</li>
+      <li><b>Scrollen / knijpen</b>: in- en uitzoomen (ook met <b>+ / −</b>)</li>
+      <li><b>Klikken</b> of <b>muiswiel indrukken</b> op een tempel, huis, akker of stuk water: de camera draait voortaan daaromheen</li>
+      <li><b>Vinger stil houden</b>: hetzelfde op een telefoon</li>
+      <li><b>Cursor tegen de schermrand</b>: het beeld draait mee (uit te zetten met <b>Randscroll</b>)</li>
+      <li><b>Pijltjes</b> draaien, <b>Esc</b> gaat terug naar het midden, <b>H</b> verbergt de balken</li>
+      <li><b>Tijd</b>: schuif de zon van ochtend naar nacht; 's nachts branden de vuren op de tempels en gloeien de deuren</li>
+    </ul>
+    <button id="help-close" type="button">Rondkijken</button>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+  if (!window.THREE) {
+    document.getElementById('loader').innerHTML =
+      '<p><b>three.js kon niet geladen worden.</b><br>' +
+      'Dit diorama haalt de 3D-bibliotheek van een CDN; zet even internet aan en herlaad.</p>';
+  }
+</script>
+<!-- volgorde telt: elk bestand hangt zich aan MC en gebruikt wat eerder geladen is -->
+<script src="utils.js"></script>
+<script src="textures.js"></script>
+<script src="geo.js"></script>
+<script src="gebouwen.js"></script>
+<script src="world.js"></script>
+<script src="centrum.js"></script>
+<script src="paleizen.js"></script>
+<script src="wijken.js"></script>
+<script src="life.js"></script>
+<script src="controls.js"></script>
+<script src="main.js"></script>
+</body>
+</html>

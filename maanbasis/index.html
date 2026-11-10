@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>Ruimtestation</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body class="landing">
+
+<canvas id="scene"></canvas>
+
+<div id="loader">
+  <div class="spin"></div>
+  <p>Planetoïde wordt gevormd…</p>
+</div>
+
+<!-- ------------------------------------------------------------- bovenbalk -->
+<header id="hud">
+  <div class="res naam" title="Klik om je station een naam te geven">
+    <span class="ico">⌖</span>
+    <div>
+      <input id="v-name" maxlength="28" spellcheck="false" autocomplete="off" value="Station Alfa">
+      <small>ruimtestation</small>
+    </div>
+  </div>
+  <div class="res" title="Regoliet — bouwmateriaal uit maangruis, van de regolietgraver of het vrachtschip">
+    <span class="ico">⛏</span>
+    <div><b id="v-regolith">0</b><small id="r-regolith">regoliet</small></div>
+  </div>
+  <div class="res" title="Robots / laadplaatsen in de werkplaatsen">
+    <span class="ico">⚙</span>
+    <div><b id="v-crew">0/0</b><small>robots</small></div>
+  </div>
+
+  <div class="meter" title="Stroom uit zonnepanelen, opgeslagen in accu's — ook de robots laden hieruit op">
+    <div class="lbl"><span>Stroom</span><span id="v-power">0</span></div>
+    <div class="bar"><i id="bar-power" class="fill pw"></i></div>
+    <div class="rate" id="r-power">±0/s</div>
+  </div>
+  <div class="meter" title="Zuurstof uit de zuurstoffabrieken — oxidator voor raketbrandstof">
+    <div class="lbl"><span>Zuurstof</span><span id="v-oxygen">0</span></div>
+    <div class="bar"><i id="bar-oxygen" class="fill ox"></i></div>
+    <div class="rate" id="r-oxygen">±0/s</div>
+  </div>
+  <div class="meter" title="Water uit de waterfabrieken — voor brandstof en bouw">
+    <div class="lbl"><span>Water</span><span id="v-water">0</span></div>
+    <div class="bar"><i id="bar-water" class="fill wt"></i></div>
+    <div class="rate" id="r-water">±0/s</div>
+  </div>
+  <div class="meter" title="Raketbrandstof uit de brandstoftanks, gemaakt van water en zuurstof">
+    <div class="lbl"><span>Brandstof</span><span id="v-fuel">0</span></div>
+    <div class="bar"><i id="bar-fuel" class="fill fl"></i></div>
+    <div class="rate" id="r-fuel">±0/s</div>
+  </div>
+
+  <div class="spacer"></div>
+  <div class="toggles">
+    <button id="btn-follow" class="tgl on" title="Camera boven het station houden">Volg station</button>
+    <button id="btn-rotate" class="tgl on" title="Planetoïde laten draaien (dag en nacht)">Draaiing</button>
+    <button id="btn-edge" class="tgl on" title="Beeld meeschuiven als de cursor de schermrand raakt">Randscroll</button>
+    <button id="btn-save" class="tgl" title="Het station als bestand bewaren">Opslaan</button>
+    <button id="btn-load" class="tgl" title="Een bewaard bestand openen (of sleep het op het venster)">Laden</button>
+    <button id="btn-help" class="tgl" title="Uitleg">?</button>
+  </div>
+  <input id="file-load" type="file" accept=".json,application/json" hidden>
+</header>
+
+<!-- ------------------------------------------------------------ zijpaneel -->
+<aside id="panel" hidden>
+  <button id="p-close" title="Sluiten">✕</button>
+  <h2 id="p-name">—</h2>
+  <p id="p-desc"></p>
+  <ul id="p-stats"></ul>
+  <div id="p-actions"></div>
+</aside>
+
+<!-- ------------------------------------------------------------- bouwbalk -->
+<footer id="buildbar">
+  <span class="hint">Bouwen:</span>
+  <div id="build-buttons"></div>
+  <span id="build-hint" class="hint dim">klik een module en daarna een vrije plek op het platform</span>
+</footer>
+
+<div id="toast"></div>
+
+<!-- ------------------------------------------------------------- aanmeren -->
+<div id="intro" hidden>
+  <p id="intro-cap"></p>
+
+  <div id="intro-card" hidden>
+    <h2>Nova 3 is aangemeerd op de planetoïde</h2>
+    <p>De motor is uit, het gruis zakt terug en de klemmen houden het schip vast
+       op het dockingstation. Verder is er niets: kaal gesteente, kraters, en
+       de aarde, klein en blauw, laag boven de horizon.</p>
+    <p>Er is geen mens aan boord. Jij stuurt de missie op afstand; in het
+       vrachtruim staan twee werkrobots en bouwblokken van geperst regoliet
+       voor de eerste modules — genoeg om te beginnen, niet genoeg om te
+       aarzelen. Geld heb je hier niets aan: alles wat je bouwt, betaal je met
+       wat de rots zelf oplevert.</p>
+    <p class="tip">Robots eten en ademen niet, maar zonder stroom vallen ze stil.
+       Zet eerst een <b>zonnepaneel</b> neer, dan een <b>regolietgraver</b> voor
+       nieuw bouwmateriaal. Een <b>robotwerkplaats</b> bouwt er robots bij;
+       <b>water</b> en <b>zuurstof</b> worden samen raketbrandstof. Kies een
+       module in de balk onderin en klik daarna op een blauwe ring op het
+       platform.</p>
+    <div class="knoppen">
+      <button id="intro-go" type="button" class="primair">Bouwen maar</button>
+      <button id="intro-help" type="button">Eerst de uitleg</button>
+    </div>
+  </div>
+
+  <button id="intro-skip" type="button" hidden>Aanmeren overslaan ›</button>
+</div>
+
+<!-- ----------------------------------------------------------------- hulp -->
+<div id="help" hidden>
+  <div class="card">
+    <h2>Ruimtestation</h2>
+    <p>Een onbemand vrachtschip meert aan op een kale planetoïde, met twee
+       werkrobots en bouwmateriaal aan boord. Jij stuurt ze op afstand aan.
+       Houd de stroom aan, want daar leven de robots van, en breid uit met
+       grondstoffen: regoliet als bouwmateriaal, en voor sommige modules ook
+       water of brandstof.</p>
+    <h3>Besturing</h3>
+    <ul>
+      <li><b>Slepen</b> — om het draaipunt heen draaien</li>
+      <li><b>Cursor tegen de schermrand</b> — het beeld schuift die kant op
+          (uit te zetten met <b>Randscroll</b> in de bovenbalk)</li>
+      <li><b>Muiswieltje indrukken en slepen</b> — draai om wat er onder de cursor
+          zit: een module, het schip of een plek op de planetoïde</li>
+      <li><b>Vinger stil houden</b> — hetzelfde zonder muis: druk een halve
+          seconde op een module, het schip of het gesteente, en sleep daarna om
+          dat punt. Lang op de sterrenhemel drukken laat het weer los</li>
+      <li><b>Scrollen / knijpen</b> — in- en uitzoomen</li>
+      <li><b>Klikken</b> — een module selecteren; in het paneel kun je de camera
+          er ook omheen laten draaien</li>
+      <li><b>Pijltjes</b> draaien, <b>+ / −</b> zoomen, <b>Esc</b> annuleert bouwen
+          en zet het draaipunt terug op de planetoïde</li>
+      <li><b>Naam</b> — klik linksboven op de naam van je station om hem te wijzigen</li>
+      <li><b>Opslaan / Laden</b> — je station als bestand bewaren en terugzetten;
+          slepen van zo'n bestand op het venster werkt ook</li>
+    </ul>
+    <h3>Hoe het werkt</h3>
+    <ul>
+      <li><b>Je begint kaal:</b> alleen het dockingstation met het schip erin
+          en twee robots. Het regoliet uit het vrachtruim is je bouwmateriaal —
+          begin met stroom en een graver.</li>
+      <li><b>Robots</b> laden op uit het stroomnet. Zijn de accu's leeg, dan
+          valt er na een tijdje een stil. Elke robot die je over het platform
+          ziet stappen is er één.</li>
+      <li><b>Bouwen kost grondstoffen.</b> Elke module kost regoliet; een
+          brandstoftank ook water, een extra dockingstation brandstof. Slopen
+          geeft de helft van het regoliet terug.</li>
+      <li><b>Regolietgravers</b> graven maangruis af en bakken er bouwblokken
+          van. Zonder graver groeit je station niet.</li>
+      <li><b>Robotwerkplaatsen</b> zetten nieuwe robots in elkaar (30 regoliet
+          per stuk) zolang er een laadplaats vrij is en de stroom volstaat.</li>
+      <li><b>Zonnepanelen</b> leveren alleen stroom aan de zonzijde. De accu's moeten je door de schaduw helpen.</li>
+      <li><b>Zuurstoffabrieken</b> en <b>waterfabrieken</b> winnen zuurstof en
+          waterijs uit het gesteente.</li>
+      <li><b>Brandstoftanks</b> maken daar raketbrandstof van — dat kost veel
+          stroom, en water en zuurstof.</li>
+      <li><b>Het dockingstation</b> stuurt het aangemeerde vrachtschip met
+          60 brandstof naar de naburige brokstukken. Even later komt het terug
+          met een lading regoliet — hoe meer robots er laden, hoe meer.</li>
+    </ul>
+    <button id="help-close">Aan de slag</button>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+  if (!window.THREE) {
+    document.getElementById('loader').innerHTML =
+      '<p><b>three.js kon niet geladen worden.</b><br>' +
+      'Dit spel haalt de 3D-bibliotheek van een CDN; zet even internet aan en herlaad.</p>';
+  }
+</script>
+<!-- volgorde telt: elk bestand hangt zich aan MB en gebruikt wat eerder geladen is -->
+<script src="utils.js"></script>
+<script src="rock.js"></script>
+<script src="buildings.js"></script>
+<script src="crew.js"></script>
+<script src="world.js"></script>
+<script src="controls.js"></script>
+<script src="game.js"></script>
+<script src="intro.js"></script>
+<script src="main.js"></script>
+</body>
+</html>

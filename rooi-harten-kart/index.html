@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Rooi Harten Kart</title>
+<link rel="stylesheet" href="./src/style.css">
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+
+<div id="app"></div>
+
+<div id="menu">
+  <div class="card">
+    <div class="eyebrow">Missiehuis van het Heilig Hart &middot; Bredaseweg 204, Tilburg</div>
+    <h1><span class="heart">&hearts;</span> Rooi Harten Kart</h1>
+    <p class="lead">Drie rondes rond en dwars door het klooster. Via een zijpoortje en een zijdeur door de lange gang naar de ontvangsthal, de grote trap op naar de hal op de eerste verdieping, verder omhoog naar de zolder, door de zolderkamer en <b>uit de dakkapel</b> de kloostertuin in. Daarna door de tuin, langs de nieuwbouw en door de oostpoort terug naar de Bredaseweg.</p>
+    <div class="touch-only">
+      <p class="hint">Houd je telefoon liggend. <b>Sturen:</b> zet je linkerduim op het scherm en schuif naar links of rechts. <b>Rechts onder:</b> gas, driften (geeft ook gas) en je item. <b>Links onder:</b> remmen.</p>
+    </div>
+    <button id="btn-start" class="primary">Race starten</button>
+    <div class="keys">
+      <div><b>&uarr; / W</b> gas</div>
+      <div><b>&darr; / S</b> rem, achteruit</div>
+      <div><b>&larr; &rarr; / A D</b> sturen</div>
+      <div><b>Spatie / Shift</b> driften (lang = turbo)</div>
+      <div><b>E / X</b> item gebruiken</div>
+      <div><b>R</b> terug op de baan</div>
+      <div><b>C</b> camera</div>
+      <div><b>P / Esc</b> pauze</div>
+    </div>
+    <p class="note">Het klooster, de kapel en het terrein komen uit het 3D-model van De Rooi Harten. Dat model heeft geen interieur, dus de hal, de trappen en de zolder zijn voor dit spel bedacht.</p>
+  </div>
+</div>
+
+<div id="hud" hidden>
+  <div id="tl">
+    <div id="pos"></div>
+    <div id="lap"></div>
+    <div id="item"></div>
+  </div>
+  <div id="tr">
+    <div id="time"></div>
+    <div id="best"></div>
+  </div>
+  <div id="zone"></div>
+  <div id="speed"></div>
+  <canvas id="minimap" width="220" height="230"></canvas>
+  <div id="msg"></div>
+</div>
+
+<div id="touch" hidden>
+  <div id="t-steer"></div>
+  <div id="t-knob" hidden><div></div></div>
+  <button id="t-pause" aria-label="Pauze">&#10074;&#10074;</button>
+  <button id="t-brake">REM</button>
+  <button id="t-item" aria-label="Item"></button>
+  <button id="t-drift">DRIFT</button>
+  <button id="t-gas">GAS</button>
+</div>
+
+<div id="pause" hidden>
+  <div class="card small">
+    <h2>Pauze</h2>
+    <button id="btn-resume" class="primary">Verder</button>
+  </div>
+</div>
+
+<div id="results" hidden>
+  <div class="card small">
+    <h2>Uitslag</h2>
+    <ol id="results-list"></ol>
+    <p id="results-laps"></p>
+    <button id="btn-again" class="primary">Nog een keer</button>
+  </div>
+</div>
+
+<div id="loading">Klooster wordt opgebouwd&hellip;</div>
+
+<script type="module" src="./src/game.js"></script>
+</body>
+</html>

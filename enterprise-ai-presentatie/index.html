@@ -1,0 +1,986 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Enterprise AI Platform</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+:root {
+  --bg: #070b18;
+  --bg2: #0d1430;
+  --text: #e8ecf8;
+  --muted: #8f9bbd;
+  --line: rgba(160, 180, 255, .14);
+  --card: rgba(20, 28, 60, .55);
+  --a1: #22d3ee;
+  --a2: #7c5cff;
+  --warm1: #ff8a5b;
+  --warm2: #ff4d8d;
+  --ease: cubic-bezier(.2, .8, .2, 1);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+  background: radial-gradient(ellipse at 20% 10%, var(--bg2), var(--bg) 60%);
+  color: var(--text);
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+#bg { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 0; }
+
+/* ---------- Slides ---------- */
+.deck { position: fixed; inset: 0; z-index: 1; }
+
+.slide {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5vh 6vw 10vh;
+  opacity: 0;
+  visibility: hidden;
+  transform: scale(1.04);
+  transition: opacity .7s var(--ease), transform .9s var(--ease), visibility 0s .7s;
+  overflow-y: auto;
+}
+.slide.active {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+  transition: opacity .7s var(--ease), transform .9s var(--ease), visibility 0s;
+}
+.slide.past { transform: scale(.96); }
+
+.wrap { width: 100%; max-width: 1180px; margin: auto; }
+.center { text-align: center; }
+.center-text { text-align: center; margin-inline: auto; }
+
+.reveal {
+  opacity: 0;
+  transform: translateY(26px);
+  filter: blur(6px);
+  transition: opacity .8s var(--ease), transform .8s var(--ease), filter .8s var(--ease);
+  transition-delay: calc(var(--i, 0) * 110ms + 150ms);
+}
+.slide.active .reveal { opacity: 1; transform: none; filter: none; }
+
+/* ---------- Typography ---------- */
+.eyebrow {
+  font-family: "JetBrains Mono", monospace;
+  font-size: .85rem;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: var(--a1);
+  margin-bottom: 1rem;
+}
+h1 {
+  font-size: clamp(3rem, 10vw, 8rem);
+  font-weight: 800;
+  letter-spacing: -.04em;
+  line-height: .95;
+}
+h2 {
+  font-size: clamp(2rem, 4.6vw, 3.6rem);
+  font-weight: 800;
+  letter-spacing: -.03em;
+  line-height: 1.05;
+  margin-bottom: clamp(1.5rem, 4vh, 3rem);
+}
+h3 { font-size: 1.15rem; font-weight: 600; margin-bottom: .45rem; }
+p { line-height: 1.55; }
+.lead { font-size: clamp(1.1rem, 2.2vw, 1.6rem); color: var(--muted); font-weight: 300; margin-top: 1.4rem; }
+.body { font-size: 1.12rem; color: #c5cde6; margin-bottom: 1rem; max-width: 34rem; }
+.muted { color: var(--muted); }
+.caption { color: var(--muted); max-width: 52rem; margin-top: 2rem; line-height: 1.6; }
+.caption b { color: var(--text); }
+
+.grad {
+  background: linear-gradient(100deg, var(--a1), var(--a2));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.grad.warm { background-image: linear-gradient(100deg, var(--warm1), var(--warm2)); }
+
+.hint { margin-top: 3rem; color: var(--muted); font-size: .9rem; }
+kbd {
+  font-family: "JetBrains Mono", monospace;
+  border: 1px solid var(--line);
+  border-bottom-width: 2px;
+  border-radius: 6px;
+  padding: .1rem .45rem;
+  font-size: .8rem;
+  color: var(--text);
+}
+
+/* Title slide glow */
+.s-title h1 { text-shadow: 0 0 80px rgba(34, 211, 238, .25); }
+.s-title .grad { animation: hueShift 8s linear infinite; background-size: 200% 100%; }
+@keyframes hueShift { 50% { background-position: 100% 0; } }
+
+/* ---------- Cards ---------- */
+.grid { display: grid; gap: 1.2rem; }
+.g4 { grid-template-columns: repeat(4, 1fr); }
+.g3 { grid-template-columns: repeat(3, 1fr); }
+
+.card, .uc, .ch {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 1.5rem;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+.card p, .ch p { color: var(--muted); font-size: .96rem; }
+
+.card { transition: opacity .8s var(--ease), transform .5s var(--ease), filter .8s var(--ease), border-color .3s; }
+.slide.active .card:hover { transform: translateY(-6px); border-color: rgba(34, 211, 238, .5); }
+
+.icon {
+  width: 46px; height: 46px;
+  border-radius: 12px;
+  display: grid; place-items: center;
+  background: linear-gradient(135deg, rgba(34, 211, 238, .18), rgba(124, 92, 255, .18));
+  margin-bottom: 1.1rem;
+}
+.icon svg { width: 24px; height: 24px; fill: none; stroke: var(--a1); stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+
+.card.warm .icon { background: linear-gradient(135deg, rgba(255, 138, 91, .18), rgba(255, 77, 141, .18)); }
+.card.warm .icon svg { stroke: var(--warm1); }
+.slide.active .card.warm:hover { border-color: rgba(255, 138, 91, .5); }
+
+/* Build / buy / blend */
+.opt { font-family: "JetBrains Mono", monospace; font-size: .75rem; letter-spacing: .12em; text-transform: uppercase; color: var(--a1); margin-bottom: .8rem; }
+.card.rec { border-color: rgba(34, 211, 238, .55); box-shadow: 0 0 50px rgba(34, 211, 238, .12); }
+.card .checks { margin-top: 1rem; gap: .4rem; font-size: .92rem; }
+.card .checks + .checks { margin-top: .5rem; }
+.checks.plus li::before { color: #34d399; }
+.checks.minus li { color: var(--muted); }
+.checks.minus li::before { content: "–"; color: var(--warm2); }
+
+/* Use cases */
+.uc { display: flex; flex-direction: column; gap: .5rem; position: relative; overflow: hidden; }
+.uc b { font-size: 1.2rem; }
+.uc span { color: var(--muted); line-height: 1.5; }
+.uc::before {
+  content: "";
+  position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+  background: linear-gradient(var(--a1), var(--a2));
+  transform: scaleY(0); transform-origin: top;
+  transition: transform .8s var(--ease) calc(var(--i, 0) * 110ms + 500ms);
+}
+.slide.active .uc::before { transform: scaleY(1); }
+
+/* Challenges */
+.ch .n { font-family: "JetBrains Mono", monospace; color: var(--warm1); font-size: .85rem; }
+.ch b { display: block; font-size: 1.15rem; margin: .4rem 0; }
+
+/* ---------- Timeline ---------- */
+.timeline { position: relative; display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem; padding-top: 2.5rem; }
+.tl-line {
+  position: absolute; top: 8px; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, var(--a1), var(--a2));
+  transform: scaleX(0); transform-origin: left;
+  transition: transform 1.6s var(--ease) .3s;
+}
+.slide.active .tl-line { transform: scaleX(1); }
+.tl-item { position: relative; }
+.tl-dot {
+  position: absolute; top: -2.5rem; left: 0;
+  width: 18px; height: 18px; border-radius: 50%;
+  background: var(--bg); border: 2px solid var(--a1);
+}
+.tl-item.now .tl-dot { background: var(--a2); border-color: var(--a2); box-shadow: 0 0 0 0 rgba(124, 92, 255, .7); animation: pulse 2s infinite; }
+@keyframes pulse { 70% { box-shadow: 0 0 0 16px rgba(124, 92, 255, 0); } 100% { box-shadow: 0 0 0 0 rgba(124, 92, 255, 0); } }
+.tl-era { font-family: "JetBrains Mono", monospace; color: var(--a1); font-size: .8rem; margin-bottom: .5rem; }
+.tl-item p { color: var(--muted); font-size: .96rem; }
+.tl-item.now h3 { color: #b9a8ff; }
+
+/* ---------- Split layout ---------- */
+.split { display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; align-items: center; }
+
+/* ---------- Chat demo ---------- */
+.chat {
+  background: rgba(10, 15, 35, .85);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, .45), 0 0 0 1px rgba(124, 92, 255, .1);
+}
+.chat-head { display: flex; align-items: center; gap: 6px; padding: .8rem 1rem; border-bottom: 1px solid var(--line); }
+.chat-head span { width: 10px; height: 10px; border-radius: 50%; background: #2a3358; }
+.chat-head em { margin-left: auto; font-style: normal; font-family: "JetBrains Mono", monospace; font-size: .75rem; color: var(--muted); }
+.chat-body { padding: 1.2rem; min-height: 340px; display: flex; flex-direction: column; gap: .7rem; font-size: .95rem; }
+.chat-foot { padding: .5rem 1rem; font-size: .72rem; color: var(--muted); border-top: 1px solid var(--line); text-align: right; }
+
+.msg { max-width: 88%; padding: .7rem 1rem; border-radius: 14px; line-height: 1.5; animation: pop .4s var(--ease); }
+.msg.user { align-self: flex-end; background: linear-gradient(135deg, #3b4cff, #7c5cff); border-bottom-right-radius: 4px; }
+.msg.ai { align-self: flex-start; background: #161e40; border: 1px solid var(--line); border-bottom-left-radius: 4px; }
+.step {
+  font-family: "JetBrains Mono", monospace; font-size: .8rem; color: var(--muted);
+  display: flex; align-items: center; gap: .6rem; animation: pop .3s var(--ease);
+}
+.step::before {
+  content: ""; width: 12px; height: 12px; border-radius: 50%;
+  border: 2px solid var(--a1); border-top-color: transparent;
+  animation: spin .8s linear infinite;
+}
+.step.done { color: #9fe7c4; }
+.step.done::before { border: none; content: "✓"; width: auto; height: auto; animation: none; color: #34d399; }
+.cursor::after { content: "▍"; color: var(--a1); animation: blink 1s steps(1) infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes blink { 50% { opacity: 0; } }
+@keyframes pop { from { opacity: 0; transform: translateY(8px); } }
+
+/* ---------- Stack ---------- */
+.stack { display: grid; grid-template-columns: 1fr 64px; gap: 1rem; }
+.layers { display: flex; flex-direction: column; gap: .55rem; }
+.layer {
+  display: flex; justify-content: space-between; align-items: center; gap: 1rem;
+  padding: .95rem 1.4rem;
+  border-radius: 12px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--c) 28%, transparent), rgba(20, 28, 60, .4));
+  border: 1px solid color-mix(in srgb, var(--c) 45%, transparent);
+  border-left: 4px solid var(--c);
+  transform: translateX(-40px);
+}
+.layer b { font-size: 1.05rem; }
+.layer span { color: var(--muted); font-size: .9rem; text-align: right; }
+/* Bottom-up build: reverse delay order */
+.layers .layer:nth-child(1) { --i: 7 !important; }
+.layers .layer:nth-child(2) { --i: 6 !important; }
+.layers .layer:nth-child(3) { --i: 5 !important; }
+.layers .layer:nth-child(4) { --i: 4 !important; }
+.layers .layer:nth-child(5) { --i: 3 !important; }
+.layers .layer:nth-child(6) { --i: 2 !important; }
+.pillar {
+  border-radius: 12px;
+  border: 1px dashed rgba(34, 211, 238, .5);
+  background: rgba(34, 211, 238, .06);
+  display: grid; place-items: center;
+}
+.pillar span {
+  writing-mode: vertical-rl; transform: rotate(180deg);
+  font-family: "JetBrains Mono", monospace; font-size: .78rem; letter-spacing: .12em; color: var(--a1);
+}
+
+/* ---------- RAG flow ---------- */
+.flow { display: flex; align-items: stretch; }
+.node {
+  flex: 1;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 1.2rem 1rem;
+  display: flex; flex-direction: column; gap: .4rem;
+  backdrop-filter: blur(10px);
+}
+.node i {
+  font-style: normal; font-family: "JetBrains Mono", monospace;
+  width: 28px; height: 28px; border-radius: 50%;
+  display: grid; place-items: center; font-size: .8rem;
+  background: rgba(34, 211, 238, .15); color: var(--a1);
+}
+.node b { font-size: 1.05rem; }
+.node span { font-size: .86rem; color: var(--muted); line-height: 1.45; }
+.node.hl { border-color: rgba(34, 211, 238, .6); box-shadow: 0 0 40px rgba(34, 211, 238, .15); }
+.link { width: 42px; flex: none; position: relative; align-self: center; height: 2px; background: var(--line); }
+.link::after {
+  content: ""; position: absolute; top: -4px; left: 0;
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--a1); box-shadow: 0 0 12px var(--a1);
+  animation: travel 2.4s var(--ease) infinite;
+  animation-delay: calc(var(--i, 0) * 120ms);
+}
+@keyframes travel { 0% { left: 0; opacity: 0; } 15% { opacity: 1; } 85% { opacity: 1; } 100% { left: calc(100% - 10px); opacity: 0; } }
+
+/* ---------- Pyramid ---------- */
+.pyramid { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.lvl {
+  text-align: center; padding: 1.1rem 1rem;
+  display: flex; flex-direction: column; justify-content: center; gap: .2rem;
+  clip-path: polygon(var(--inset) 0, calc(100% - var(--inset)) 0, 100% 100%, 0 100%);
+}
+.lvl b { font-size: 1rem; }
+.lvl span { font-size: .8rem; opacity: .9; }
+.l1 { width: 40%; --inset: 16%; padding-top: 1.6rem; background: linear-gradient(#ff4d6d, #e0284f); }
+.l2 { width: 60%; --inset: 10%; background: linear-gradient(#ff8a5b, #f0663a); }
+.l3 { width: 80%; --inset: 7%; background: linear-gradient(#f5c04a, #dca12b); color: #2b1d00; }
+.l4 { width: 100%; --inset: 5%; background: linear-gradient(#34d399, #1fb07c); color: #01261a; }
+.pyramid .l1 { --i: 5 !important; }
+.pyramid .l2 { --i: 4 !important; }
+.pyramid .l3 { --i: 3 !important; }
+.pyramid .l4 { --i: 2 !important; }
+
+.checks { list-style: none; margin-top: 1.4rem; display: grid; gap: .65rem; }
+.checks li { padding-left: 1.8rem; position: relative; color: #c5cde6; }
+.checks li::before { content: "✓"; position: absolute; left: 0; color: var(--warm1); font-weight: 800; }
+
+/* ---------- Roadmap ---------- */
+.road { position: relative; display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.4rem; padding-top: 1rem; }
+.road-bar { position: absolute; top: 2.35rem; left: 2rem; right: 2rem; height: 4px; background: var(--line); border-radius: 4px; overflow: hidden; }
+.road-bar span { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #22d3ee, #34d399); transition: width 2.2s var(--ease) .6s; }
+.slide.active .road-bar span { width: 100%; }
+.phase { position: relative; }
+.ph-num {
+  width: 46px; height: 46px; border-radius: 50%;
+  display: grid; place-items: center; font-weight: 800;
+  background: var(--bg); border: 2px solid #34d399; color: #34d399;
+  margin-bottom: 1.2rem; position: relative; z-index: 1;
+}
+.phase em { display: block; font-style: normal; font-family: "JetBrains Mono", monospace; font-size: .8rem; color: #34d399; margin-bottom: .6rem; }
+.phase p { color: var(--muted); font-size: .96rem; }
+
+/* ---------- Rings ---------- */
+.rings { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem; text-align: center; }
+.ring { position: relative; display: flex; flex-direction: column; align-items: center; }
+.dial { position: relative; width: min(170px, 100%); }
+.ring svg { display: block; width: 100%; transform: rotate(-90deg); }
+.ring circle { fill: none; stroke-width: 9; }
+.ring .track { stroke: var(--line); }
+.ring .bar {
+  stroke: #34d399; stroke-linecap: round;
+  stroke-dasharray: 326.7; stroke-dashoffset: 326.7;
+  transition: stroke-dashoffset 1.8s var(--ease) .5s;
+  filter: drop-shadow(0 0 6px rgba(52, 211, 153, .5));
+}
+.ring:nth-child(2) .bar { stroke: #22d3ee; filter: drop-shadow(0 0 6px rgba(34, 211, 238, .5)); }
+.ring:nth-child(3) .bar { stroke: #7c5cff; filter: drop-shadow(0 0 6px rgba(124, 92, 255, .5)); }
+.ring:nth-child(4) .bar { stroke: #f5c04a; filter: drop-shadow(0 0 6px rgba(245, 192, 74, .5)); }
+.ring-val {
+  position: absolute; inset: 0;
+  display: grid; place-items: center;
+  font-size: 1.9rem; font-weight: 800;
+}
+.ring b { margin-top: 1rem; font-size: 1.1rem; }
+.ring span { color: var(--muted); font-size: .88rem; margin-top: .25rem; }
+
+/* ---------- Closing ---------- */
+.mantra { display: flex; flex-direction: column; gap: .2rem; font-size: clamp(2.2rem, 5.5vw, 4.6rem); }
+.mantra span { display: block; }
+.takeaways { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.2rem; margin-top: 3rem; text-align: left; }
+.takeaways div { border-top: 2px solid var(--a1); padding-top: 1rem; color: var(--muted); line-height: 1.5; }
+.takeaways b { display: block; color: var(--text); font-size: 1.1rem; margin-bottom: .3rem; }
+
+/* ---------- Chrome ---------- */
+.progress { position: fixed; left: 0; right: 0; bottom: 0; height: 3px; background: rgba(255, 255, 255, .05); z-index: 5; }
+.progress span { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--a1), var(--a2)); transition: width .6s var(--ease); }
+
+.controls {
+  position: fixed; right: 1.2rem; bottom: 1.1rem; z-index: 6;
+  display: flex; align-items: center; gap: .35rem;
+  padding: .35rem; border-radius: 999px;
+  background: rgba(10, 15, 35, .7); border: 1px solid var(--line);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+}
+.controls button {
+  width: 36px; height: 36px; border-radius: 50%;
+  border: none; background: transparent; color: var(--text);
+  font-size: 1rem; cursor: pointer; transition: background .2s;
+}
+.controls button:hover { background: rgba(255, 255, 255, .08); }
+.controls button.on { background: var(--a2); }
+#counter { font-family: "JetBrains Mono", monospace; font-size: .8rem; color: var(--muted); min-width: 4.2rem; text-align: center; }
+
+/* ---------- Responsive ---------- */
+@media (max-width: 960px) {
+  .g4 { grid-template-columns: repeat(2, 1fr); }
+  .g3 { grid-template-columns: repeat(2, 1fr); }
+  .split { grid-template-columns: 1fr; gap: 2rem; }
+  .timeline, .road, .rings { grid-template-columns: repeat(2, 1fr); row-gap: 2.5rem; }
+  .tl-line, .road-bar { display: none; }
+  .tl-item { padding-top: 0; }
+  .tl-dot { position: static; display: block; margin-bottom: .8rem; }
+  .timeline { padding-top: 0; }
+  .flow { flex-direction: column; }
+  .link { width: 2px; height: 26px; align-self: center; }
+  .link::after { left: -4px; animation-name: travelV; }
+  .slide { align-items: flex-start; }
+}
+@keyframes travelV { 0% { top: 0; opacity: 0; } 15% { opacity: 1; } 85% { opacity: 1; } 100% { top: calc(100% - 10px); opacity: 0; } }
+
+@media (max-width: 600px) {
+  .slide { padding: 4vh 16px 12vh; }
+  .g4, .g3, .takeaways { grid-template-columns: 1fr; }
+  .layer { flex-direction: column; align-items: flex-start; gap: .2rem; }
+  .layer span { text-align: left; }
+  .stack { grid-template-columns: 1fr 40px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition-duration: .01ms !important; transition-delay: 0s !important; }
+}
+
+</style>
+</head>
+<body>
+  <canvas id="bg" aria-hidden="true"></canvas>
+
+  <main class="deck" id="deck">
+
+    <!-- 1. Titel -->
+    <section class="slide s-title" data-hue="190">
+      <div class="wrap center">
+        <div class="eyebrow reveal">Keynote · Architectuur &amp; Strategie</div>
+        <h1 class="reveal">Het Enterprise<br><span class="grad">AI Platform</span></h1>
+        <p class="lead reveal">Eén fundament waarop de hele organisatie veilig AI bouwt, gebruikt en opschaalt</p>
+        <div class="hint reveal"><kbd>←</kbd> <kbd>→</kbd> navigeren &nbsp;·&nbsp; <kbd>P</kbd> autoplay &nbsp;·&nbsp; <kbd>F</kbd> volledig scherm</div>
+      </div>
+    </section>
+
+    <!-- 2. Het probleem -->
+    <section class="slide" data-hue="340">
+      <div class="wrap">
+        <div class="eyebrow reveal">01 · Het probleem</div>
+        <h2 class="reveal">AI zonder platform = <span class="grad warm">wildgroei</span></h2>
+        <div class="grid g4">
+          <article class="card warm reveal">
+            <div class="icon"><svg viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/><path d="M3 3l18 18"/></svg></div>
+            <h3>Schaduw-AI</h3>
+            <p>Medewerkers plakken bedrijfsdata in publieke tools omdat er geen goed alternatief is.</p>
+          </article>
+          <article class="card warm reveal">
+            <div class="icon"><svg viewBox="0 0 24 24"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z"/></svg></div>
+            <h3>Elk team bouwt opnieuw</h3>
+            <p>Vijf teams, vijf chatbots, vijf koppelingen met dezelfde SharePoint. Niets is herbruikbaar.</p>
+          </article>
+          <article class="card warm reveal">
+            <div class="icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M14.5 9.5c-.5-1-1.5-1.5-2.5-1.5-1.7 0-3 1-3 2s1 1.6 3 2 3 1 3 2-1.3 2-3 2c-1 0-2-.5-2.5-1.5M12 6v2M12 16v2"/></svg></div>
+            <h3>Kosten onzichtbaar</h3>
+            <p>Losse API-keys en abonnementen. Niemand weet wat AI de organisatie echt kost.</p>
+          </article>
+          <article class="card warm reveal">
+            <div class="icon"><svg viewBox="0 0 24 24"><path d="M12 3l9 16H3z"/><path d="M12 10v4M12 17v.5"/></svg></div>
+            <h3>Risico's ongecontroleerd</h3>
+            <p>Geen centrale logging, geen guardrails, geen overzicht van welke AI waar draait.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. Volwassenheid -->
+    <section class="slide" data-hue="235">
+      <div class="wrap">
+        <div class="eyebrow reveal">02 · De weg naar volwassenheid</div>
+        <h2 class="reveal">Van losse tools naar <span class="grad">platform</span></h2>
+        <div class="timeline">
+          <div class="tl-line"></div>
+          <div class="tl-item reveal">
+            <span class="tl-dot"></span>
+            <div class="tl-era">Fase 1</div>
+            <h3>Experimenteren</h3>
+            <p>Individuen proberen tools uit. Veel enthousiasme, geen structuur.</p>
+          </div>
+          <div class="tl-item reveal">
+            <span class="tl-dot"></span>
+            <div class="tl-era">Fase 2</div>
+            <h3>Losse oplossingen</h3>
+            <p>Teams bouwen eigen use cases. Waarde ontstaat, maar versnipperd.</p>
+          </div>
+          <div class="tl-item reveal now">
+            <span class="tl-dot"></span>
+            <div class="tl-era">Fase 3</div>
+            <h3>Gedeeld platform</h3>
+            <p>Gemeenschappelijke bouwstenen, centrale governance, self-service voor teams.</p>
+          </div>
+          <div class="tl-item reveal">
+            <span class="tl-dot"></span>
+            <div class="tl-era">Fase 4</div>
+            <h3>AI als bedrijfscapaciteit</h3>
+            <p>AI zit standaard in elk proces, net als data of cloud nu.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. Kerncapaciteiten -->
+    <section class="slide" data-hue="285">
+      <div class="wrap">
+        <div class="eyebrow reveal">03 · Wat zit erin?</div>
+        <h2 class="reveal">Zes <span class="grad">kerncapaciteiten</span></h2>
+        <div class="grid g3">
+          <article class="uc reveal"><b>Model gateway</b><span>Eén toegangspunt naar meerdere modellen, met routing, quota, caching en fallback</span></article>
+          <article class="uc reveal"><b>Kennislaag (RAG)</b><span>Connectoren naar documenten en systemen, vectorindex, rechten per document</span></article>
+          <article class="uc reveal"><b>Agent-framework</b><span>Orchestratie, toolgebruik, workflows en menselijke goedkeuringsstappen</span></article>
+          <article class="uc reveal"><b>Guardrails &amp; security</b><span>PII-maskering, bescherming tegen prompt-injectie, contentfilters, SSO</span></article>
+          <article class="uc reveal"><b>Observability &amp; evals</b><span>Tracing, kwaliteitsmetingen, regressietests op prompts en modellen</span></article>
+          <article class="uc reveal"><b>Self-service &amp; FinOps</b><span>Portal met templates, budgetten per team, kosten per use case inzichtelijk</span></article>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. Architectuur -->
+    <section class="slide" data-hue="200">
+      <div class="wrap">
+        <div class="eyebrow reveal">04 · Architectuur</div>
+        <h2 class="reveal">De lagen van het <span class="grad">platform</span></h2>
+        <div class="stack">
+          <div class="layers">
+            <div class="layer reveal" style="--c:#7c5cff"><b>Kanalen</b><span>Teams, intranet, bedrijfsapps, API's voor ontwikkelaars</span></div>
+            <div class="layer reveal" style="--c:#6a72ff"><b>Use cases &amp; agents</b><span>Gebouwd door business- en productteams</span></div>
+            <div class="layer reveal" style="--c:#5588ff"><b>Platformdiensten</b><span>Orchestratie, promptbeheer, evaluatie, workflows</span></div>
+            <div class="layer reveal" style="--c:#3fa2f5"><b>Model gateway</b><span>Commerciële en open modellen achter één API</span></div>
+            <div class="layer reveal" style="--c:#2bbce0"><b>Kennislaag</b><span>Connectoren, vectorindex, toegangsrechten</span></div>
+            <div class="layer reveal" style="--c:#22d3c5"><b>Data &amp; infrastructuur</b><span>Cloud, GPU's, datawarehouse, netwerk</span></div>
+          </div>
+          <div class="pillar reveal"><span>Identity · Guardrails · Logging · FinOps</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6. Demo -->
+    <section class="slide" data-hue="260" data-duration="16000" data-hook="chat">
+      <div class="wrap split">
+        <div>
+          <div class="eyebrow reveal">05 · In de praktijk</div>
+          <h2 class="reveal">Eén vraag, <span class="grad">door het platform</span></h2>
+          <p class="body reveal">De gebruiker ziet een simpele assistent. Daaronder handelt het platform identiteit, privacy, modelkeuze, kennis en logging af.</p>
+          <p class="body muted reveal">Het team dat deze assistent bouwde hoefde niets daarvan zelf te maken. Het platform levert het.</p>
+        </div>
+        <div class="chat reveal" id="chat">
+          <div class="chat-head"><span></span><span></span><span></span><em>assistent · via AI-platform</em></div>
+          <div class="chat-body" id="chatBody"></div>
+          <div class="chat-foot">Fictief voorbeeld</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 7. Model gateway flow -->
+    <section class="slide" data-hue="175">
+      <div class="wrap">
+        <div class="eyebrow reveal">06 · Onder de motorkap</div>
+        <h2 class="reveal">Het hart: de <span class="grad">model gateway</span></h2>
+        <div class="flow">
+          <div class="node reveal"><i>1</i><b>Applicatie</b><span>Stuurt een verzoek via één standaard-API</span></div>
+          <div class="link reveal"></div>
+          <div class="node reveal"><i>2</i><b>Toegang</b><span>Wie is dit, welk team, hoeveel budget is er nog?</span></div>
+          <div class="link reveal"></div>
+          <div class="node reveal"><i>3</i><b>Guardrails</b><span>Persoonsgegevens maskeren, prompt-injectie blokkeren</span></div>
+          <div class="link reveal"></div>
+          <div class="node reveal"><i>4</i><b>Router</b><span>Kiest het passende model op taak, kwaliteit en kosten</span></div>
+          <div class="link reveal"></div>
+          <div class="node reveal hl"><i>5</i><b>Log &amp; meet</b><span>Trace, kosten en kwaliteit per request vastgelegd</span></div>
+        </div>
+        <p class="caption reveal"><b>Waarom een gateway?</b> Modellen wisselen elkaar snel af. Met een gateway vervang je een model op één plek in plaats van in honderd applicaties, en dwing je beleid af zonder dat elk team het zelf hoeft te bouwen.</p>
+      </div>
+    </section>
+
+    <!-- 8. Build / buy / blend -->
+    <section class="slide" data-hue="210">
+      <div class="wrap">
+        <div class="eyebrow reveal">07 · Keuzes</div>
+        <h2 class="reveal">Bouwen, kopen of <span class="grad">combineren</span>?</h2>
+        <div class="grid g3">
+          <article class="card reveal">
+            <div class="opt">Bouwen</div>
+            <h3>Zelf ontwikkelen</h3>
+            <p>Op basis van open-source componenten en cloudservices.</p>
+            <ul class="checks plus"><li>Maximale controle en flexibiliteit</li><li>Geen vendor lock-in</li></ul>
+            <ul class="checks minus"><li>Vraagt een sterk engineeringteam</li><li>Langere doorlooptijd</li></ul>
+          </article>
+          <article class="card reveal">
+            <div class="opt">Kopen</div>
+            <h3>Kant-en-klaar platform</h3>
+            <p>Een leverancier levert het platform als dienst.</p>
+            <ul class="checks plus"><li>Snel live</li><li>Onderhoud bij de leverancier</li></ul>
+            <ul class="checks minus"><li>Afhankelijkheid van de roadmap van een ander</li><li>Minder maatwerk</li></ul>
+          </article>
+          <article class="card rec reveal">
+            <div class="opt">Combineren · vaak de beste keuze</div>
+            <h3>Kopen waar het kan, bouwen waar het telt</h3>
+            <p>Standaardcomponenten afnemen, en zelf bouwen wat onderscheidend is.</p>
+            <ul class="checks plus"><li>Snelheid én eigen regie</li><li>Componenten uitwisselbaar</li></ul>
+            <ul class="checks minus"><li>Vraagt duidelijke architectuurprincipes</li></ul>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- 9. Compliance -->
+    <section class="slide" data-hue="25">
+      <div class="wrap split">
+        <div>
+          <div class="eyebrow reveal">08 · Governance</div>
+          <h2 class="reveal">Compliance <span class="grad warm">ingebouwd</span>, niet achteraf</h2>
+          <p class="body reveal">De EU AI Act koppelt verplichtingen aan het risico van een toepassing. Het platform maakt die regels afdwingbaar voor elke use case.</p>
+          <ul class="checks reveal">
+            <li>Use-case-register met risicoclassificatie</li>
+            <li>Volledige audit logs per request</li>
+            <li>Data blijft binnen de EU</li>
+            <li>Menselijke goedkeuring afdwingbaar per workflow</li>
+          </ul>
+        </div>
+        <div class="pyramid">
+          <div class="lvl reveal l1"><b>Onaanvaardbaar</b><span>Platform blokkeert</span></div>
+          <div class="lvl reveal l2"><b>Hoog risico</b><span>Review, documentatie, menselijk toezicht</span></div>
+          <div class="lvl reveal l3"><b>Beperkt risico</b><span>Transparantie standaard ingebouwd</span></div>
+          <div class="lvl reveal l4"><b>Minimaal risico</b><span>Self-service, direct live</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 10. Operating model -->
+    <section class="slide" data-hue="285">
+      <div class="wrap">
+        <div class="eyebrow reveal">09 · Organisatie</div>
+        <h2 class="reveal">Wie doet <span class="grad">wat</span>?</h2>
+        <div class="grid g3">
+          <article class="card reveal">
+            <div class="icon"><svg viewBox="0 0 24 24"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.4-.6-.6-2.4z"/></svg></div>
+            <h3>Platformteam</h3>
+            <p>Bouwt en beheert het platform als product, met een roadmap, SLA's en interne klanten.</p>
+          </article>
+          <article class="card reveal">
+            <div class="icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/><path d="M12 2v2"/></svg></div>
+            <h3>AI Center of Excellence</h3>
+            <p>Stelt standaarden op, prioriteert use cases, verzorgt training en deelt best practices.</p>
+          </article>
+          <article class="card reveal">
+            <div class="icon"><svg viewBox="0 0 24 24"><path d="M3 21V9l9-6 9 6v12"/><path d="M9 21v-6h6v6"/></svg></div>
+            <h3>Business-teams</h3>
+            <p>Eigenaar van use cases en resultaat. Bouwen self-service op het platform.</p>
+          </article>
+        </div>
+        <p class="caption reveal center-text">Centraal waar het moet (fundament, security), decentraal waar het kan (use cases, innovatie).</p>
+      </div>
+    </section>
+
+    <!-- 11. Roadmap -->
+    <section class="slide" data-hue="150">
+      <div class="wrap">
+        <div class="eyebrow reveal">10 · Aanpak</div>
+        <h2 class="reveal">Het platform in <span class="grad">vier stappen</span></h2>
+        <div class="road">
+          <div class="road-bar"><span></span></div>
+          <div class="phase reveal"><div class="ph-num">1</div><h3>Fundament</h3><em>0 – 3 maanden</em><p>Gateway, SSO, logging en een veilige interne assistent als alternatief voor schaduw-AI.</p></div>
+          <div class="phase reveal"><div class="ph-num">2</div><h3>Eerste use cases</h3><em>3 – 6 maanden</em><p>Twee à drie use cases met hoge waarde bouwen en daarbij herbruikbare componenten oogsten.</p></div>
+          <div class="phase reveal"><div class="ph-num">3</div><h3>Self-service</h3><em>6 – 12 maanden</em><p>Portal, templates en documentatie zodat teams zelfstandig kunnen bouwen.</p></div>
+          <div class="phase reveal"><div class="ph-num">4</div><h3>Schalen</h3><em>12+ maanden</em><p>Agents in kernprocessen, een intern ecosysteem van herbruikbare tools en kennisbronnen.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 12. KPI's -->
+    <section class="slide" data-hue="120" data-hook="rings">
+      <div class="wrap">
+        <div class="eyebrow reveal">11 · Impact</div>
+        <h2 class="reveal">Hoe meet je een <span class="grad">platform</span>?</h2>
+        <div class="rings">
+          <div class="ring reveal" data-value="70" data-prefix="−" data-suffix="%">
+            <div class="dial"><svg viewBox="0 0 120 120"><circle class="track" cx="60" cy="60" r="52"/><circle class="bar" cx="60" cy="60" r="52"/></svg><div class="ring-val">0</div></div><b>Time-to-production</b><span>van idee tot live use case</span>
+          </div>
+          <div class="ring reveal" data-value="60" data-suffix="%">
+            <div class="dial"><svg viewBox="0 0 120 120"><circle class="track" cx="60" cy="60" r="52"/><circle class="bar" cx="60" cy="60" r="52"/></svg><div class="ring-val">0</div></div><b>Hergebruik</b><span>componenten gedeeld tussen use cases</span>
+          </div>
+          <div class="ring reveal" data-value="35" data-prefix="−" data-suffix="%">
+            <div class="dial"><svg viewBox="0 0 120 120"><circle class="track" cx="60" cy="60" r="52"/><circle class="bar" cx="60" cy="60" r="52"/></svg><div class="ring-val">0</div></div><b>Kosten per request</b><span>door routing en caching</span>
+          </div>
+          <div class="ring reveal" data-value="90" data-suffix="%">
+            <div class="dial"><svg viewBox="0 0 120 120"><circle class="track" cx="60" cy="60" r="52"/><circle class="bar" cx="60" cy="60" r="52"/></svg><div class="ring-val">0</div></div><b>Dekking</b><span>AI-gebruik dat via het platform loopt</span>
+          </div>
+        </div>
+        <p class="caption reveal center-text">Voorbeelddoelen. Meet naast techniek ook adoptie en bedrijfswaarde per use case.</p>
+      </div>
+    </section>
+
+    <!-- 13. Afsluiting -->
+    <section class="slide s-title" data-hue="190">
+      <div class="wrap center">
+        <div class="eyebrow reveal">Tot slot</div>
+        <h1 class="mantra">
+          <span class="reveal">Bouw het fundament één keer.</span>
+          <span class="reveal grad">Laat iedereen erop bouwen.</span>
+        </h1>
+        <div class="takeaways">
+          <div class="reveal"><b>Platform als product</b>Met eigenaar, roadmap en interne klanten.</div>
+          <div class="reveal"><b>Veilig als standaard</b>Guardrails en governance zitten in het fundament.</div>
+          <div class="reveal"><b>Snelheid door hergebruik</b>Elke nieuwe use case is sneller live dan de vorige.</div>
+        </div>
+        <p class="lead reveal" style="margin-top:2.2rem">Vragen?</p>
+      </div>
+    </section>
+
+  </main>
+
+  <div class="progress"><span id="progressBar"></span></div>
+
+  <nav class="controls" aria-label="Presentatienavigatie">
+    <button id="prev" aria-label="Vorige dia">&#8592;</button>
+    <span id="counter"></span>
+    <button id="next" aria-label="Volgende dia">&#8594;</button>
+    <button id="play" aria-label="Autoplay aan/uit" title="Autoplay (P)">&#9654;</button>
+    <button id="fs" aria-label="Volledig scherm" title="Volledig scherm (F)">&#x26F6;</button>
+  </nav>
+
+  <script>
+(() => {
+  const slides = [...document.querySelectorAll('.slide')];
+  const counter = document.getElementById('counter');
+  const progressBar = document.getElementById('progressBar');
+  const playBtn = document.getElementById('play');
+  const DEFAULT_DURATION = 9000;
+
+  let current = -1;
+  let autoplayTimer = null;
+  let playing = false;
+
+  // Stagger index for reveal animations, in DOM order per slide
+  slides.forEach(slide => {
+    slide.querySelectorAll('.reveal').forEach((el, i) => el.style.setProperty('--i', i));
+  });
+
+  /* ---------------- Navigation ---------------- */
+  function go(n) {
+    n = Math.max(0, Math.min(slides.length - 1, n));
+    if (n === current) return;
+
+    const prev = slides[current];
+    if (prev) {
+      prev.classList.remove('active');
+      leaveHook(prev);
+    }
+    slides.forEach((s, i) => s.classList.toggle('past', i < n));
+
+    current = n;
+    const slide = slides[current];
+    slide.classList.add('active');
+    slide.scrollTop = 0;
+
+    counter.textContent = `${current + 1} / ${slides.length}`;
+    progressBar.style.width = `${((current + 1) / slides.length) * 100}%`;
+    history.replaceState(null, '', `#${current + 1}`);
+    targetHue = Number(slide.dataset.hue || 200);
+
+    enterHook(slide);
+    if (playing) scheduleNext();
+  }
+
+  const next = () => go(current + 1);
+  const prev = () => go(current - 1);
+
+  document.getElementById('next').addEventListener('click', next);
+  document.getElementById('prev').addEventListener('click', prev);
+  document.getElementById('fs').addEventListener('click', toggleFullscreen);
+  playBtn.addEventListener('click', togglePlay);
+
+  document.addEventListener('keydown', e => {
+    switch (e.key) {
+      case 'ArrowRight': case 'ArrowDown': case 'PageDown': case ' ': case 'Enter':
+        e.preventDefault(); next(); break;
+      case 'ArrowLeft': case 'ArrowUp': case 'PageUp': case 'Backspace':
+        e.preventDefault(); prev(); break;
+      case 'Home': go(0); break;
+      case 'End': go(slides.length - 1); break;
+      case 'f': case 'F': toggleFullscreen(); break;
+      case 'p': case 'P': togglePlay(); break;
+    }
+  });
+
+  // Click on empty slide area advances (not on controls or interactive bits)
+  document.getElementById('deck').addEventListener('click', e => {
+    if (e.target.closest('button, a, .chat')) return;
+    if (window.getSelection().toString()) return;
+    e.clientX < window.innerWidth * 0.25 ? prev() : next();
+  });
+
+  // Touch swipe
+  let touchX = null, touchY = null;
+  document.addEventListener('touchstart', e => { touchX = e.touches[0].clientX; touchY = e.touches[0].clientY; }, { passive: true });
+  document.addEventListener('touchend', e => {
+    if (touchX === null) return;
+    const dx = e.changedTouches[0].clientX - touchX;
+    const dy = e.changedTouches[0].clientY - touchY;
+    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) dx < 0 ? next() : prev();
+    touchX = null;
+  });
+
+  function toggleFullscreen() {
+    if (!document.fullscreenElement) document.documentElement.requestFullscreen?.();
+    else document.exitFullscreen?.();
+  }
+
+  function togglePlay() {
+    playing = !playing;
+    playBtn.classList.toggle('on', playing);
+    playBtn.innerHTML = playing ? '&#10073;&#10073;' : '&#9654;';
+    if (playing) scheduleNext(); else clearTimeout(autoplayTimer);
+  }
+
+  function scheduleNext() {
+    clearTimeout(autoplayTimer);
+    const duration = Number(slides[current].dataset.duration || DEFAULT_DURATION);
+    autoplayTimer = setTimeout(() => {
+      if (current === slides.length - 1) go(0); else next();
+    }, duration);
+  }
+
+  /* ---------------- Slide hooks ---------------- */
+  const hooks = {
+    chat: { enter: startChat, leave: stopChat },
+    rings: { enter: startRings, leave: resetRings },
+  };
+  function enterHook(slide) { hooks[slide.dataset.hook]?.enter(slide); }
+  function leaveHook(slide) { hooks[slide.dataset.hook]?.leave(slide); }
+
+  // Chat demo
+  const chatBody = document.getElementById('chatBody');
+  let chatRun = 0;
+  const wait = ms => new Promise(r => setTimeout(r, ms));
+
+  const script = [
+    { type: 'user', text: 'Wat zijn de afspraken over boeteclausules in het contract met Noorderlicht Logistiek?' },
+    { type: 'step', text: 'Identiteit: SSO · team Inkoop · budget ok' },
+    { type: 'step', text: 'Guardrails: geen PII · geen injectie' },
+    { type: 'step', text: 'Kennislaag: 3 passages · rechten gefilterd' },
+    { type: 'step', text: 'Router: redeneermodel gekozen' },
+    { type: 'step', text: 'Trace + kosten gelogd' },
+    { type: 'ai', text: 'Bij een levertermijn die meer dan 5 werkdagen wordt overschreden geldt een boete van 0,5% per dag, met een maximum van 10% van de orderwaarde (art. 7.2). Overmacht is uitgesloten (art. 12). Bron: Raamovereenkomst 2025, p. 14.' },
+  ];
+
+  async function startChat() {
+    const run = ++chatRun;
+    const alive = () => run === chatRun;
+    chatBody.innerHTML = '';
+    await wait(1100);
+
+    for (const item of script) {
+      if (!alive()) return;
+      if (item.type === 'user') {
+        addEl('msg user', item.text);
+        await wait(900);
+      } else if (item.type === 'step') {
+        const el = addEl('step', item.text);
+        await wait(850 + Math.random() * 500);
+        if (!alive()) return;
+        el.classList.add('done');
+      } else {
+        await wait(400);
+        const el = addEl('msg ai cursor', '');
+        for (let i = 0; i < item.text.length; i++) {
+          if (!alive()) return;
+          el.textContent += item.text[i];
+          await wait(item.text[i] === ' ' ? 18 : 24);
+        }
+        await wait(1200);
+        el.classList.remove('cursor');
+      }
+    }
+  }
+  function stopChat() { chatRun++; }
+  function addEl(cls, text) {
+    const el = document.createElement('div');
+    el.className = cls;
+    el.textContent = text;
+    chatBody.appendChild(el);
+    return el;
+  }
+
+  // KPI rings
+  const CIRC = 2 * Math.PI * 52;
+  let ringFrames = [];
+  function startRings(slide) {
+    slide.querySelectorAll('.ring').forEach((ring, idx) => {
+      const value = Number(ring.dataset.value);
+      const bar = ring.querySelector('.bar');
+      const out = ring.querySelector('.ring-val');
+      bar.style.transitionDelay = `${0.5 + idx * 0.15}s`;
+      requestAnimationFrame(() => { bar.style.strokeDashoffset = CIRC * (1 - value / 100); });
+
+      const start = performance.now() + 500 + idx * 150;
+      const dur = 1800;
+      const tick = now => {
+        const t = Math.min(1, Math.max(0, (now - start) / dur));
+        const eased = 1 - Math.pow(1 - t, 3);
+        out.textContent = `${ring.dataset.prefix || ''}${Math.round(value * eased)}${ring.dataset.suffix || ''}`;
+        if (t < 1) ringFrames[idx] = requestAnimationFrame(tick);
+      };
+      ringFrames[idx] = requestAnimationFrame(tick);
+    });
+  }
+  function resetRings(slide) {
+    ringFrames.forEach(cancelAnimationFrame);
+    slide.querySelectorAll('.ring').forEach(ring => {
+      ring.querySelector('.bar').style.strokeDashoffset = CIRC;
+      ring.querySelector('.ring-val').textContent = '0';
+    });
+  }
+
+  /* ---------------- Background: neural network ---------------- */
+  const canvas = document.getElementById('bg');
+  const ctx = canvas.getContext('2d');
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let W, H, DPR, nodes = [];
+  let hue = 190, targetHue = 190;
+  const mouse = { x: -9999, y: -9999 };
+
+  function resize() {
+    DPR = Math.min(window.devicePixelRatio || 1, 2);
+    W = canvas.width = innerWidth * DPR;
+    H = canvas.height = innerHeight * DPR;
+    const count = Math.round(Math.min(110, (innerWidth * innerHeight) / 14000));
+    nodes = Array.from({ length: count }, () => ({
+      x: Math.random() * W,
+      y: Math.random() * H,
+      vx: (Math.random() - 0.5) * 0.35 * DPR,
+      vy: (Math.random() - 0.5) * 0.35 * DPR,
+      r: (Math.random() * 1.6 + 0.6) * DPR,
+      p: Math.random() * Math.PI * 2,
+    }));
+  }
+  window.addEventListener('resize', resize);
+  window.addEventListener('mousemove', e => { mouse.x = e.clientX * DPR; mouse.y = e.clientY * DPR; });
+  window.addEventListener('mouseleave', () => { mouse.x = mouse.y = -9999; });
+
+  function draw() {
+    hue += (targetHue - hue) * 0.03;
+    ctx.clearRect(0, 0, W, H);
+    const maxDist = 140 * DPR;
+
+    for (const n of nodes) {
+      if (!reduceMotion) {
+        n.x += n.vx; n.y += n.vy; n.p += 0.02;
+        if (n.x < 0 || n.x > W) n.vx *= -1;
+        if (n.y < 0 || n.y > H) n.vy *= -1;
+        const dx = n.x - mouse.x, dy = n.y - mouse.y;
+        const d = Math.hypot(dx, dy);
+        if (d < 120 * DPR && d > 0) { n.x += (dx / d) * 1.2 * DPR; n.y += (dy / d) * 1.2 * DPR; }
+      }
+    }
+
+    for (let i = 0; i < nodes.length; i++) {
+      const a = nodes[i];
+      for (let j = i + 1; j < nodes.length; j++) {
+        const b = nodes[j];
+        const d = Math.hypot(a.x - b.x, a.y - b.y);
+        if (d < maxDist) {
+          ctx.strokeStyle = `hsla(${hue + (j % 40)}, 90%, 65%, ${(1 - d / maxDist) * 0.22})`;
+          ctx.lineWidth = DPR * 0.8;
+          ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+        }
+      }
+    }
+    for (const n of nodes) {
+      const glow = 0.5 + Math.sin(n.p) * 0.3;
+      ctx.fillStyle = `hsla(${hue}, 95%, 70%, ${glow})`;
+      ctx.beginPath(); ctx.arc(n.x, n.y, n.r, 0, Math.PI * 2); ctx.fill();
+    }
+    requestAnimationFrame(draw);
+  }
+
+  /* ---------------- Init ---------------- */
+  resize();
+  draw();
+  const fromHash = parseInt(location.hash.slice(1), 10);
+  requestAnimationFrame(() => go(Number.isFinite(fromHash) ? fromHash - 1 : 0));
+})();
+
+</script>
+</body>
+</html>

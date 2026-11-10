@@ -1,0 +1,4509 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Rooi Harten Kart</title>
+<style>
+:root {
+  --ink: #12171d;
+  --paper: #f6f1ea;
+  --accent: #c4141e;
+  --accent-hi: #dc2a33;
+  --gold: #f0c75a;
+  --line: rgba(255, 255, 255, .16);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #0d1116;
+  color: var(--paper);
+  font: 14px/1.5 "Segoe UI", system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+#app { position: fixed; inset: 0; }
+#app canvas { display: block; }
+
+[hidden] { display: none !important; }
+
+/* ---------- menu, pauze, uitslag ---------- */
+
+#menu, #pause, #results {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: 24px 16px;
+  background: radial-gradient(120% 120% at 50% 0%, rgba(60, 10, 14, .35) 0%, rgba(9, 10, 13, .78) 75%);
+}
+
+.card {
+  width: min(620px, 100%);
+  padding: 32px 34px 26px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgba(16, 15, 17, .82);
+  backdrop-filter: blur(6px);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, .55);
+}
+
+.card.small { width: min(420px, 100%); text-align: center; }
+
+.eyebrow {
+  text-transform: uppercase;
+  letter-spacing: .16em;
+  font-size: 11px;
+  color: #d39a90;
+}
+
+h1 {
+  margin: 6px 0 12px;
+  font-size: 40px;
+  line-height: 1.05;
+  font-weight: 800;
+  letter-spacing: -.01em;
+  font-style: italic;
+}
+
+h1 .heart { color: var(--accent); font-style: normal; }
+h2 { margin: 0 0 16px; font-size: 24px; }
+
+.lead { margin: 0 0 22px; color: #ddd2ca; }
+.lead b { color: #fff; }
+
+button {
+  appearance: none;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 13px 22px;
+  font: 700 15px/1 "Segoe UI", system-ui, sans-serif;
+  color: #f1e8e2;
+  background: rgba(255, 255, 255, .06);
+  cursor: pointer;
+  transition: transform .12s ease, background .12s ease;
+}
+
+button:hover { transform: translateY(-1px); }
+button.primary { background: var(--accent); border-color: transparent; color: #fff; }
+button.primary:hover { background: var(--accent-hi); }
+
+.keys {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px 18px;
+  margin: 22px 0 0;
+  font-size: 13px;
+  color: #b3a7a0;
+}
+
+.keys b { color: #f1e8e2; font-weight: 600; }
+
+.note {
+  margin: 20px 0 0;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+  font-size: 12px;
+  color: #8e8580;
+}
+
+#results-list {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  text-align: left;
+}
+
+#results-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 8px;
+}
+
+#results-list li.me { background: rgba(196, 20, 30, .25); }
+#results-list .place { width: 22px; font-weight: 800; font-size: 18px; }
+#results-list .dot { width: 12px; height: 12px; border-radius: 50%; }
+#results-list .name { flex: 1; }
+#results-list .t { font-variant-numeric: tabular-nums; color: #d8cec7; }
+#results-laps { font-size: 12px; color: #a99f99; margin: 0 0 18px; }
+
+/* ---------- HUD ---------- */
+
+#hud {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  pointer-events: none;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, .6), 0 1px 2px rgba(0, 0, 0, .8);
+}
+
+#tl { position: absolute; top: 14px; left: 18px; }
+#pos { font-size: 64px; font-weight: 900; font-style: italic; line-height: 1; color: #fff; }
+#pos small { font-size: 26px; margin-left: 2px; }
+#lap { font-size: 26px; font-weight: 800; font-style: italic; margin-top: 4px; }
+#lap small { font-size: 15px; font-weight: 600; margin-right: 4px; opacity: .85; }
+
+#item {
+  width: 64px;
+  height: 64px;
+  margin-top: 10px;
+  border: 3px solid rgba(255, 255, 255, .8);
+  border-radius: 14px;
+  background: rgba(0, 0, 0, .35);
+  display: grid;
+  place-items: center;
+  font-size: 36px;
+  text-shadow: none;
+}
+
+#item.has.paddenstoel::after { content: "\1F344"; }
+#item.has.banaan::after { content: "\1F34C"; }
+
+#tr { position: absolute; top: 16px; right: 18px; text-align: right; }
+#time { font-size: 30px; font-weight: 800; font-variant-numeric: tabular-nums; }
+#best { font-size: 13px; color: #e8ddd6; }
+
+#zone {
+  position: absolute;
+  top: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 6px 16px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(14, 14, 17, .55);
+  font-weight: 600;
+  font-size: 15px;
+  text-shadow: none;
+  white-space: nowrap;
+}
+
+#speed {
+  position: absolute;
+  right: 22px;
+  bottom: 18px;
+  font-size: 44px;
+  font-weight: 900;
+  font-style: italic;
+  font-variant-numeric: tabular-nums;
+}
+
+#speed small { font-size: 16px; font-weight: 600; }
+
+#minimap {
+  position: absolute;
+  left: 16px;
+  bottom: 16px;
+  width: 220px;
+  height: 230px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(14, 14, 17, .55);
+}
+
+#msg {
+  position: absolute;
+  left: 50%;
+  top: 34%;
+  transform: translate(-50%, -50%) scale(.9);
+  font-size: 44px;
+  font-weight: 900;
+  font-style: italic;
+  opacity: 0;
+  transition: opacity .2s ease, transform .2s ease;
+  white-space: nowrap;
+}
+
+#msg.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+#msg.big { font-size: 110px; color: var(--gold); -webkit-text-stroke: 3px #5a1a10; }
+
+#loading {
+  position: fixed;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  z-index: 45;
+  font-size: 13px;
+  color: #b3a7a0;
+}
+
+/* ---------- telefoon en tablet ---------- */
+
+html, body { touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.touch-only { display: none; }
+body.touch .touch-only { display: block; }
+body.touch .keys { display: none; }
+
+.hint { margin: 0 0 16px; font-size: 13px; color: #b3a7a0; }
+.hint b { color: #f1e8e2; }
+
+#touch { position: fixed; inset: 0; z-index: 25; }
+#t-steer { position: absolute; inset: 0; touch-action: none; }
+
+#touch button {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 2px solid rgba(255, 255, 255, .55);
+  background: rgba(20, 18, 20, .38);
+  color: #fff;
+  font: 800 15px/1 "Segoe UI", system-ui, sans-serif;
+  letter-spacing: .04em;
+  touch-action: none;
+  backdrop-filter: blur(3px);
+  transition: none;
+}
+
+#touch button.down { background: rgba(196, 20, 30, .7); transform: scale(.94); }
+#t-brake { left: calc(16px + env(safe-area-inset-left)); bottom: 18px; width: 82px; height: 82px; border-radius: 50%; }
+#t-gas { right: calc(16px + env(safe-area-inset-right)); bottom: 18px; width: 104px; height: 104px; border-radius: 50%; font-size: 18px !important; background: rgba(40, 150, 70, .45) !important; }
+#t-gas.down { background: rgba(40, 170, 80, .8) !important; }
+#t-drift { right: calc(132px + env(safe-area-inset-right)); bottom: 22px; width: 80px; height: 80px; border-radius: 50%; }
+#t-item { right: calc(38px + env(safe-area-inset-right)); bottom: 136px; width: 62px; height: 62px; border-radius: 16px; font-size: 32px !important; }
+#t-item.paddenstoel::after { content: "\1F344"; }
+#t-item.banaan::after { content: "\1F34C"; }
+#t-pause { top: 12px; right: calc(12px + env(safe-area-inset-right)); width: 44px; height: 44px; border-radius: 12px; font-size: 12px !important; }
+
+#t-knob { position: absolute; width: 0; height: 0; pointer-events: none; }
+#t-knob::before {
+  content: "";
+  position: absolute;
+  left: -70px; top: -70px; width: 140px; height: 140px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, .35);
+}
+#t-knob > div {
+  position: absolute;
+  left: -26px; top: -26px; width: 52px; height: 52px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .6);
+}
+
+body.touching #tr { right: calc(66px + env(safe-area-inset-right)); top: 12px; }
+body.touching #time { font-size: 22px; }
+body.touching #tl { left: calc(14px + env(safe-area-inset-left)); top: 8px; }
+body.touching #pos { font-size: 40px; }
+body.touching #pos small { font-size: 18px; }
+body.touching #lap { font-size: 18px; }
+body.touching #item { display: none; }
+body.touching #zone { top: 10px; font-size: 13px; padding: 4px 12px; }
+body.touching #minimap { left: auto; bottom: auto; top: 64px; right: calc(12px + env(safe-area-inset-right)); width: 112px; height: 117px; }
+body.touching #speed { right: auto; left: 50%; transform: translateX(-50%); bottom: 10px; font-size: 26px; }
+body.touching #speed small { font-size: 12px; }
+body.touching #msg.big { font-size: 80px; }
+
+@media (max-height: 520px) {
+  #menu { place-items: start center; overflow-y: auto; }
+  .card { padding: 18px 22px 16px; }
+  h1 { font-size: 26px; margin: 4px 0 8px; }
+  .lead { font-size: 12.5px; margin-bottom: 12px; }
+  .note { display: none; }
+}
+
+@media (max-width: 640px) {
+  .card { padding: 22px 18px 18px; }
+  h1 { font-size: 30px; }
+  .keys { grid-template-columns: 1fr; }
+  #minimap { width: 150px; height: 157px; }
+  #pos { font-size: 46px; }
+  #zone { top: auto; bottom: 190px; }
+}
+
+</style>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+
+<div id="app"></div>
+
+<div id="menu">
+  <div class="card">
+    <div class="eyebrow">Missiehuis van het Heilig Hart &middot; Bredaseweg 204, Tilburg</div>
+    <h1><span class="heart">&hearts;</span> Rooi Harten Kart</h1>
+    <p class="lead">Drie rondes rond en dwars door het klooster. Via een zijpoortje en een zijdeur door de lange gang naar de ontvangsthal, de grote trap op naar de hal op de eerste verdieping, verder omhoog naar de zolder, door de zolderkamer en <b>uit de dakkapel</b> de kloostertuin in. Daarna door de tuin, langs de nieuwbouw en door de oostpoort terug naar de Bredaseweg.</p>
+    <div class="touch-only">
+      <p class="hint">Houd je telefoon liggend. <b>Sturen:</b> zet je linkerduim op het scherm en schuif naar links of rechts. <b>Rechts onder:</b> gas, driften (geeft ook gas) en je item. <b>Links onder:</b> remmen.</p>
+    </div>
+    <button id="btn-start" class="primary">Race starten</button>
+    <div class="keys">
+      <div><b>&uarr; / W</b> gas</div>
+      <div><b>&darr; / S</b> rem, achteruit</div>
+      <div><b>&larr; &rarr; / A D</b> sturen</div>
+      <div><b>Spatie / Shift</b> driften (lang = turbo)</div>
+      <div><b>E / X</b> item gebruiken</div>
+      <div><b>R</b> terug op de baan</div>
+      <div><b>C</b> camera</div>
+      <div><b>P / Esc</b> pauze</div>
+    </div>
+    <p class="note">Het klooster, de kapel en het terrein komen uit het 3D-model van De Rooi Harten. Dat model heeft geen interieur, dus de hal, de trappen en de zolder zijn voor dit spel bedacht.</p>
+  </div>
+</div>
+
+<div id="hud" hidden>
+  <div id="tl">
+    <div id="pos"></div>
+    <div id="lap"></div>
+    <div id="item"></div>
+  </div>
+  <div id="tr">
+    <div id="time"></div>
+    <div id="best"></div>
+  </div>
+  <div id="zone"></div>
+  <div id="speed"></div>
+  <canvas id="minimap" width="220" height="230"></canvas>
+  <div id="msg"></div>
+</div>
+
+<div id="touch" hidden>
+  <div id="t-steer"></div>
+  <div id="t-knob" hidden><div></div></div>
+  <button id="t-pause" aria-label="Pauze">&#10074;&#10074;</button>
+  <button id="t-brake">REM</button>
+  <button id="t-item" aria-label="Item"></button>
+  <button id="t-drift">DRIFT</button>
+  <button id="t-gas">GAS</button>
+</div>
+
+<div id="pause" hidden>
+  <div class="card small">
+    <h2>Pauze</h2>
+    <button id="btn-resume" class="primary">Verder</button>
+  </div>
+</div>
+
+<div id="results" hidden>
+  <div class="card small">
+    <h2>Uitslag</h2>
+    <ol id="results-list"></ol>
+    <p id="results-laps"></p>
+    <button id="btn-again" class="primary">Nog een keer</button>
+  </div>
+</div>
+
+<div id="loading">Klooster wordt opgebouwd&hellip;</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+
+// ===== textures.js =================================================
+// Procedureel gegenereerde texturen en materialen. Kleuren zijn afgestemd op
+// de foto's van het Missiehuis: donker roodbruine baksteen in kruisverband,
+// blauwgrijze leien, okergeel geschilderd houtwerk, cremewitte kozijnen en
+// glas-in-lood in de kapel.
+//
+// Alle geometrie krijgt UV's in meters; de herhaling van een textuur is dus
+// 1 / (de afmeting van het canvas in meters).
+
+function txCanvas(w, h) {
+  const c = document.createElement('canvas');
+  c.width = w;
+  c.height = h;
+  return [c, c.getContext('2d')];
+}
+
+function txTex(c, sizeU = 1, sizeV = 1) {
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = 8;
+  t.repeat.set(1 / sizeU, 1 / sizeV);
+  return t;
+}
+
+function txGrain(ctx, w, h, amount) {
+  const img = ctx.getImageData(0, 0, w, h);
+  const d = img.data;
+  for (let i = 0; i < d.length; i += 4) {
+    const n = (Math.random() - 0.5) * amount;
+    d[i] += n; d[i + 1] += n; d[i + 2] += n;
+  }
+  ctx.putImageData(img, 0, 0);
+}
+
+function txShade(hex, v) {
+  const c = new THREE.Color(hex);
+  return '#' + c.multiplyScalar(v).getHexString();
+}
+
+// --- baksteen in kruisverband: canvas = 2.0 x 1.0 m -----------------------
+function txBrick(base, joint, dark = 0.1) {
+  const W = 512, H = 256;
+  const [c, ctx] = txCanvas(W, H);
+  ctx.fillStyle = joint;
+  ctx.fillRect(0, 0, W, H);
+  const rows = 16, rh = H / rows;            // lagen van 6,25 cm
+  for (let r = 0; r < rows; r++) {
+    const header = r % 2 === 1;               // koppen- en strekkenlagen
+    const n = header ? 18 : 9;
+    const bw = W / n;
+    const off = header ? bw / 2 : ((r / 2) % 2 ? bw / 2 : 0);
+    for (let i = -1; i <= n; i++) {
+      let col = txShade(base, 0.8 + Math.random() * 0.32);
+      if (Math.random() < dark) col = txShade(base, 0.5 + Math.random() * 0.15);
+      ctx.fillStyle = col;
+      ctx.fillRect(i * bw + off + 1.3, r * rh + 1.3, bw - 2.6, rh - 2.6);
+    }
+  }
+  txGrain(ctx, W, H, 16);
+  return c;
+}
+
+// --- siermetselwerk in banden: canvas = 2.0 x 0.6 m -----------------------
+// 'arch': rondboogfries onder de gootlijst; 'key': verspringende blokjes
+// (de 'tandlijst' tussen de verdiepingen); 'dentil': eenvoudige tandlijst.
+function txBand(kind, base, joint) {
+  const W = 512, H = 154;
+  const [c, ctx] = txCanvas(W, H);
+  ctx.drawImage(txBrick(base, joint, 0.06), 0, 0, W, H, 0, 0, W, H);
+  const dark = 'rgba(25,10,6,.62)';
+  const lite = 'rgba(255,220,200,.10)';
+  if (kind === 'arch') {
+    const n = 12, bw = W / n;
+    for (let i = 0; i < n; i++) {
+      const x = i * bw;
+      ctx.fillStyle = dark;
+      ctx.beginPath();
+      ctx.moveTo(x + 7, H * 0.82);
+      ctx.lineTo(x + 7, H * 0.45);
+      ctx.arc(x + bw / 2, H * 0.45, bw / 2 - 7, Math.PI, 0);
+      ctx.lineTo(x + bw - 7, H * 0.82);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = lite;
+      ctx.fillRect(x, H * 0.84, bw, 4);
+      // consoles
+      ctx.fillStyle = 'rgba(0,0,0,.35)';
+      ctx.fillRect(x - 3, H * 0.82, 6, H * 0.18);
+    }
+    ctx.fillStyle = 'rgba(0,0,0,.4)';
+    ctx.fillRect(0, 0, W, 6);
+  } else if (kind === 'key') {
+    const n = 16, bw = W / n;
+    for (let i = 0; i < n; i++) {
+      ctx.fillStyle = dark;
+      ctx.fillRect(i * bw + 4, H * 0.18, bw / 2 - 4, H * 0.28);
+      ctx.fillRect(i * bw + bw / 2 + 4, H * 0.52, bw / 2 - 4, H * 0.28);
+    }
+    ctx.fillStyle = 'rgba(0,0,0,.45)';
+    ctx.fillRect(0, H * 0.1, W, 4);
+    ctx.fillRect(0, H * 0.86, W, 4);
+  } else {
+    const n = 32, bw = W / n;
+    for (let i = 0; i < n; i++) {
+      ctx.fillStyle = dark;
+      ctx.fillRect(i * bw + 3, H * 0.35, bw / 2, H * 0.3);
+    }
+  }
+  return c;
+}
+
+// --- leien: canvas = 1.0 x 1.0 m ------------------------------------------
+function txSlate(base = '#4a5059') {
+  const W = 256, H = 256;
+  const [c, ctx] = txCanvas(W, H);
+  ctx.fillStyle = '#23272d';
+  ctx.fillRect(0, 0, W, H);
+  const rows = 5, rh = H / rows, n = 4, bw = W / n;
+  for (let r = 0; r < rows; r++) {
+    const off = (r % 2) * bw / 2;
+    for (let i = -1; i <= n; i++) {
+      ctx.fillStyle = txShade(base, 0.82 + Math.random() * 0.3);
+      ctx.fillRect(i * bw + off + 1.5, r * rh + 1, bw - 3, rh - 2);
+      ctx.fillStyle = 'rgba(0,0,0,.25)';
+      ctx.fillRect(i * bw + off + 1.5, r * rh + rh - 6, bw - 3, 5);
+    }
+  }
+  txGrain(ctx, W, H, 12);
+  return c;
+}
+
+// --- dakpannen voor de overkant: canvas = 1.0 x 1.0 m ---------------------
+function txTiles(base) {
+  const W = 256, H = 256;
+  const [c, ctx] = txCanvas(W, H);
+  ctx.fillStyle = txShade(base, 0.5);
+  ctx.fillRect(0, 0, W, H);
+  const cols = 4, rows = 3, tw = W / cols, th = H / rows;
+  for (let r = 0; r < rows; r++) {
+    for (let i = 0; i <= cols; i++) {
+      const x = i * tw - tw / 2 + (r % 2) * tw / 2;
+      ctx.fillStyle = txShade(base, 0.85 + Math.random() * 0.3);
+      ctx.beginPath();
+      ctx.roundRect(x + 2, r * th + 2, tw - 4, th - 3, [3, 3, 9, 9]);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(0,0,0,.28)';
+      ctx.fillRect(x + 2, r * th + th - 7, tw - 4, 5);
+    }
+  }
+  txGrain(ctx, W, H, 12);
+  return c;
+}
+
+// --- geschilderde houten delen (topgevels): canvas = 1.0 x 1.0 m ----------
+function txBoards(base) {
+  const W = 128, H = 128;
+  const [c, ctx] = txCanvas(W, H);
+  ctx.fillStyle = base;
+  ctx.fillRect(0, 0, W, H);
+  for (let i = 0; i < 8; i++) {
+    ctx.fillStyle = txShade(base, 0.93 + Math.random() * 0.1);
+    ctx.fillRect(i * 16 + 1, 0, 14, H);
+    ctx.fillStyle = 'rgba(0,0,0,.22)';
+    ctx.fillRect(i * 16 + 15, 0, 2, H);
+  }
+  txGrain(ctx, W, H, 6);
+  return c;
+}
+
+// --- glas met roeden: canvas = 0.8 x 1.0 m (2 x 2 ruitjes) ----------------
+// Kaart overdag: donkere ruiten met wat lucht erin, cremewitte roeden.
+// Emissiekaart: warme ruiten (verlichte kamers), zwarte roeden.
+function txGlass(bar = '#ece4cc') {
+  const W = 160, H = 200;
+  const [c, ctx] = txCanvas(W, H);
+  const [e, ectx] = txCanvas(W, H);
+  ctx.fillStyle = bar;
+  ctx.fillRect(0, 0, W, H);
+  ectx.fillStyle = '#000';
+  ectx.fillRect(0, 0, W, H);
+  for (let r = 0; r < 2; r++) {
+    for (let i = 0; i < 2; i++) {
+      const x = i * 80 + 4, y = r * 100 + 4, w = 72, h = 92;
+      const g = ctx.createLinearGradient(x, y, x + w, y + h);
+      g.addColorStop(0, '#5f7487');
+      g.addColorStop(0.45 + Math.random() * 0.2, '#2a3742');
+      g.addColorStop(1, '#1d262e');
+      ctx.fillStyle = g;
+      ctx.fillRect(x, y, w, h);
+      const eg = ectx.createLinearGradient(x, y, x, y + h);
+      eg.addColorStop(0, '#ffd8a0');
+      eg.addColorStop(1, '#f2b46a');
+      ectx.fillStyle = eg;
+      ectx.fillRect(x, y, w, h);
+      // vitrage
+      ectx.fillStyle = 'rgba(255,240,220,.25)';
+      for (let k = 0; k < 6; k++) ectx.fillRect(x + k * 12, y, 5, h);
+    }
+  }
+  return [c, e];
+}
+
+// --- glas-in-lood: genormaliseerde UV (0..1 over het hele venster) --------
+function txStained(seed) {
+  const W = 128, H = 512;
+  const [c, ctx] = txCanvas(W, H);
+  ctx.fillStyle = '#121010';
+  ctx.fillRect(0, 0, W, H);
+  const pale = ['#e9dfb6', '#d7e3c8', '#cfdce8', '#efe6c9', '#e6d29a'];
+  // ruitvormig kathedraalglas
+  const s = 16;
+  for (let y = -s; y < H + s; y += s) {
+    for (let x = -s; x < W + s; x += s) {
+      const ox = ((y / s) % 2) * s / 2;
+      ctx.fillStyle = pale[(Math.random() * pale.length) | 0];
+      ctx.beginPath();
+      ctx.moveTo(x + ox, y - s / 2 + 1.5);
+      ctx.lineTo(x + ox + s / 2 - 1.5, y);
+      ctx.lineTo(x + ox, y + s / 2 - 1.5);
+      ctx.lineTo(x + ox - s / 2 + 1.5, y);
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+  // rand
+  const border = ['#1f3f8f', '#9c1d24', '#c99a26'];
+  ctx.lineWidth = 9;
+  ctx.strokeStyle = border[seed % 3];
+  ctx.strokeRect(10, 10, W - 20, H - 20);
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = '#121010';
+  ctx.strokeRect(5, 5, W - 10, H - 10);
+  ctx.strokeRect(15, 15, W - 30, H - 30);
+  // medaillons
+  const deep = ['#203f99', '#a3202b', '#2f7a3a', '#c78f1f', '#6a2a7e'];
+  for (let k = 0; k < 3; k++) {
+    const cy = 130 + k * 120;
+    ctx.fillStyle = '#121010';
+    ctx.beginPath(); ctx.arc(W / 2, cy, 40, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = deep[(seed + k) % deep.length];
+    ctx.beginPath(); ctx.arc(W / 2, cy, 37, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#121010';
+    ctx.beginPath(); ctx.arc(W / 2, cy, 22, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = deep[(seed + k + 2) % deep.length];
+    ctx.beginPath(); ctx.arc(W / 2, cy, 19, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#f1e2b0';
+    ctx.beginPath(); ctx.arc(W / 2, cy - 3, 7, 0, Math.PI * 2); ctx.fill();
+  }
+  return c;
+}
+
+// --- roosvenster: genormaliseerde UV ---------------------------------------
+function txRose() {
+  const W = 256;
+  const [c, ctx] = txCanvas(W, W);
+  ctx.fillStyle = '#121010';
+  ctx.fillRect(0, 0, W, W);
+  const cx = W / 2, cols = ['#1f3f8f', '#a3202b', '#c99a26', '#2f7a3a', '#e9dfb6'];
+  for (let ring = 4; ring >= 1; ring--) {
+    const n = ring * 6;
+    for (let i = 0; i < n; i++) {
+      ctx.fillStyle = cols[(i + ring) % cols.length];
+      ctx.beginPath();
+      ctx.moveTo(cx, cx);
+      ctx.arc(cx, cx, ring * 30 - 2, (i / n) * Math.PI * 2, ((i + 1) / n) * Math.PI * 2 - 0.03);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.strokeStyle = '#121010';
+    ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.arc(cx, cx, ring * 30, 0, Math.PI * 2); ctx.stroke();
+  }
+  ctx.fillStyle = '#c99a26';
+  ctx.beginPath(); ctx.arc(cx, cx, 14, 0, Math.PI * 2); ctx.fill();
+  return c;
+}
+
+// --- muuranker (siersmeedwerk): genormaliseerde UV, transparant -----------
+function txAnchor() {
+  const W = 64, H = 128;
+  const [c, ctx] = txCanvas(W, H);
+  ctx.clearRect(0, 0, W, H);
+  ctx.strokeStyle = '#000';
+  ctx.fillStyle = '#000';
+  ctx.lineWidth = 6;
+  ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(32, 10); ctx.lineTo(32, 118); ctx.stroke();
+  ctx.lineWidth = 5;
+  for (const s of [-1, 1]) {
+    ctx.beginPath();
+    ctx.moveTo(32, 64);
+    ctx.bezierCurveTo(32 + s * 26, 56, 32 + s * 24, 30, 32 + s * 10, 34);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(32, 74);
+    ctx.bezierCurveTo(32 + s * 22, 82, 32 + s * 20, 104, 32 + s * 8, 100);
+    ctx.stroke();
+  }
+  ctx.beginPath(); ctx.moveTo(32, 2); ctx.lineTo(40, 16); ctx.lineTo(32, 22); ctx.lineTo(24, 16); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(32, 126); ctx.lineTo(40, 112); ctx.lineTo(32, 106); ctx.lineTo(24, 112); ctx.fill();
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+
+// --- bestrating: klinkers in halfsteensverband, canvas = 1.0 x 1.0 m ------
+function txKlinker(base = '#7f675c') {
+  const W = 256, H = 256;
+  const [c, ctx] = txCanvas(W, H);
+  ctx.fillStyle = '#4c433e';
+  ctx.fillRect(0, 0, W, H);
+  const rows = 10, rh = H / rows, n = 5, bw = W / n;
+  for (let r = 0; r < rows; r++) {
+    const off = (r % 2) * bw / 2;
+    for (let i = -1; i <= n; i++) {
+      const grey = Math.random() < 0.2;
+      ctx.fillStyle = txShade(grey ? '#77716b' : base, 0.82 + Math.random() * 0.3);
+      ctx.fillRect(i * bw + off + 1.5, r * rh + 1.5, bw - 3, rh - 3);
+    }
+  }
+  txGrain(ctx, W, H, 14);
+  return c;
+}
+
+function txNoise(base, size, amount, blot = 0, blotCol = '#000') {
+  const [c, ctx] = txCanvas(size, size);
+  ctx.fillStyle = base;
+  ctx.fillRect(0, 0, size, size);
+  for (let i = 0; i < blot; i++) {
+    ctx.fillStyle = blotCol;
+    ctx.globalAlpha = 0.04 + Math.random() * 0.08;
+    ctx.beginPath();
+    ctx.arc(Math.random() * size, Math.random() * size, 4 + Math.random() * 30, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  txGrain(ctx, size, size, amount);
+  return c;
+}
+
+// --- natuursteen / hardsteen: canvas = 1.0 x 1.0 m ------------------------
+function txStone(base = '#b8b2a5') {
+  const c = txNoise(base, 128, 18, 30, '#6d665c');
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = 'rgba(0,0,0,.18)';
+  ctx.fillRect(0, 63, 128, 2);
+  ctx.fillRect(63, 0, 2, 63);
+  ctx.fillRect(20, 65, 2, 63);
+  return c;
+}
+
+// --- marmer: canvas = 1.0 x 1.0 m -----------------------------------------
+function txMarble() {
+  const W = 256;
+  const [c, ctx] = txCanvas(W, W);
+  ctx.fillStyle = '#e6e2dc';
+  ctx.fillRect(0, 0, W, W);
+  ctx.strokeStyle = 'rgba(90,90,100,.35)';
+  for (let i = 0; i < 14; i++) {
+    ctx.lineWidth = 0.6 + Math.random() * 1.6;
+    ctx.beginPath();
+    let x = Math.random() * W, y = 0;
+    ctx.moveTo(x, y);
+    while (y < W) { x += (Math.random() - 0.5) * 30; y += 10 + Math.random() * 20; ctx.lineTo(x, y); }
+    ctx.stroke();
+  }
+  txGrain(ctx, W, W, 8);
+  return c;
+}
+
+// --- cementtegels in de kapel: canvas = 1.0 x 1.0 m (4 x 4 tegels) --------
+function txFloorTiles() {
+  const W = 256, t = W / 4;
+  const [c, ctx] = txCanvas(W, W);
+  for (let r = 0; r < 4; r++) {
+    for (let i = 0; i < 4; i++) {
+      const x = i * t, y = r * t;
+      ctx.fillStyle = (r + i) % 2 ? '#8a3a2c' : '#d8c9a6';
+      ctx.fillRect(x, y, t, t);
+      ctx.fillStyle = (r + i) % 2 ? '#d8c9a6' : '#2f3a46';
+      ctx.beginPath();
+      ctx.moveTo(x + t / 2, y + 8); ctx.lineTo(x + t - 8, y + t / 2);
+      ctx.lineTo(x + t / 2, y + t - 8); ctx.lineTo(x + 8, y + t / 2);
+      ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = 'rgba(0,0,0,.35)';
+      ctx.strokeRect(x + 0.5, y + 0.5, t - 1, t - 1);
+    }
+  }
+  txGrain(ctx, W, W, 10);
+  return c;
+}
+
+// --- eiken (deuren, banken): canvas = 1.0 x 1.0 m -------------------------
+function txOak(base = '#5a3b22') {
+  const W = 128;
+  const [c, ctx] = txCanvas(W, W);
+  ctx.fillStyle = base;
+  ctx.fillRect(0, 0, W, W);
+  for (let i = 0; i < 40; i++) {
+    ctx.strokeStyle = `rgba(${Math.random() < 0.5 ? '0,0,0' : '255,220,170'},${0.05 + Math.random() * 0.08})`;
+    ctx.lineWidth = 1 + Math.random() * 2;
+    ctx.beginPath();
+    const x = Math.random() * W;
+    ctx.moveTo(x, 0);
+    ctx.bezierCurveTo(x + 6, W * 0.3, x - 6, W * 0.6, x + 3, W);
+    ctx.stroke();
+  }
+  return c;
+}
+
+// --- gevel nieuwbouw (2015): canvas = 12 x 12 m (4 traveeen x 4 lagen) ----
+function txModern() {
+  const W = 512, S = W / 12;                 // px per meter
+  const [c, ctx] = txCanvas(W, W);
+  const [e, ectx] = txCanvas(W, W);
+  ctx.drawImage(txBrick('#a2978a', '#8d847a', 0.02), 0, 0, 512, 256, 0, 0, W, W / 2);
+  ctx.drawImage(c, 0, 0, W, W / 2, 0, W / 2, W, W / 2);
+  ectx.fillStyle = '#000';
+  ectx.fillRect(0, 0, W, W);
+  for (let f = 0; f < 4; f++) {
+    for (let b = 0; b < 4; b++) {
+      const x = (b * 3 + 0.6) * S, y = (f * 3 + 0.5) * S, w = 1.8 * S, h = 2.1 * S;
+      ctx.fillStyle = '#2b2f33';
+      ctx.fillRect(x - 3, y - 3, w + 6, h + 6);
+      const g = ctx.createLinearGradient(x, y, x + w, y + h);
+      g.addColorStop(0, '#6f8394'); g.addColorStop(1, '#24303a');
+      ctx.fillStyle = g;
+      ctx.fillRect(x, y, w, h);
+      ctx.fillStyle = '#2b2f33';
+      ctx.fillRect(x + w / 2 - 2, y, 4, h);
+      if (Math.random() < 0.45) {
+        ectx.fillStyle = Math.random() < 0.5 ? '#ffd9a6' : '#f5e6cf';
+        ectx.fillRect(x, y, w, h);
+      }
+    }
+  }
+  return [c, e];
+}
+
+// ---------------------------------------------------------------------------
+function makeMaterials() {
+  const std = (o) => new THREE.MeshStandardMaterial(o);
+  const DS = THREE.DoubleSide;
+  const M = {};
+
+  const BRICK = '#7a3a2b', JOINT = '#5f5047';
+  M.brick = std({ map: txTex(txBrick(BRICK, JOINT), 2, 1), roughness: 0.92 });
+  M.brickDark = std({ map: txTex(txBrick('#5e2c22', '#4d413a', 0.2), 2, 1), roughness: 0.92 });
+  M.brick34 = std({ map: txTex(txBrick('#86452f', '#6b5c50'), 2, 1), roughness: 0.92 });
+  M.brickWall = std({ map: txTex(txBrick('#7d4433', '#625449', 0.15), 2, 1), roughness: 0.95 });
+  M.bandArch = std({ map: txTex(txBand('arch', BRICK, JOINT), 2, 0.6), roughness: 0.9 });
+  M.bandKey = std({ map: txTex(txBand('key', BRICK, JOINT), 2, 0.6), roughness: 0.9 });
+  M.bandDentil = std({ map: txTex(txBand('dentil', BRICK, JOINT), 2, 0.6), roughness: 0.9 });
+  M.houseBricks = ['#7b3d2e', '#8c5a3c', '#6a4434', '#9a7a5a', '#5d3a30'].map((b) =>
+    std({ map: txTex(txBrick(b, '#6a6058', 0.06), 2, 1), roughness: 0.92 }));
+
+  M.slate = std({ map: txTex(txSlate(), 1, 1), roughness: 0.7, metalness: 0.05, side: DS });
+  M.slateSpire = std({ map: txTex(txSlate('#3e444c'), 1, 1), roughness: 0.6, metalness: 0.08, side: DS });
+  M.tilesRed = std({ map: txTex(txTiles('#8a4a32'), 1, 1), roughness: 0.85, side: DS });
+  M.tilesDark = std({ map: txTex(txTiles('#3d3b38'), 1, 1), roughness: 0.85, side: DS });
+
+  M.woodYellow = std({ map: txTex(txBoards('#d1a640'), 1, 1), roughness: 0.6, side: DS });
+  M.paintYellow = std({ color: '#cfa13c', roughness: 0.55, side: DS });
+  M.frame = std({ color: '#ebe2c6', roughness: 0.5, side: DS });
+  M.stone = std({ map: txTex(txStone(), 1, 1), roughness: 0.85, side: DS });
+  M.granite = std({ map: txTex(txStone('#8d8a86'), 1, 1), roughness: 0.75 });
+  M.marble = std({ map: txTex(txMarble(), 1, 1), roughness: 0.3 });
+  M.plaster = std({ color: '#e9dfc9', roughness: 0.95, side: DS });
+  M.vaultRib = std({ map: txTex(txBrick('#8c4a36', '#7a6a5d', 0.05), 2, 1), roughness: 0.9, side: DS });
+  M.floorTiles = std({ map: txTex(txFloorTiles(), 1, 1), roughness: 0.55 });
+  M.oak = std({ map: txTex(txOak(), 1, 1), roughness: 0.6 });
+  M.oakDoor = std({ map: txTex(txOak('#8a5a2c'), 1, 1), roughness: 0.55 });
+  M.greenDoor = std({ color: '#2f4a3a', roughness: 0.6 });
+  M.iron = std({ color: '#1c1d1f', roughness: 0.55, metalness: 0.6, side: DS });
+  M.gold = std({ color: '#d4a640', roughness: 0.28, metalness: 1 });
+  M.silver = std({ color: '#c9cdd2', roughness: 0.25, metalness: 1 });
+  M.dark = std({ color: '#1a1512', roughness: 0.9, side: DS });
+  M.whiteStone = std({ color: '#efece4', roughness: 0.6 });
+  M.zinc = std({ color: '#8f969c', roughness: 0.45, metalness: 0.6 });
+
+  const anchor = txAnchor();
+  M.anchor = std({ map: anchor, alphaTest: 0.5, color: '#1a1a1a', roughness: 0.6, side: DS });
+
+  const [gc, ge] = txGlass();
+  const gmap = txTex(gc, 0.8, 1.0);
+  M.glass = std({ map: gmap, roughness: 0.12, metalness: 0.35 });
+  M.glassLit = std({ map: gmap, emissiveMap: txTex(ge, 0.8, 1.0), emissive: '#ffffff', emissiveIntensity: 0, roughness: 0.12, metalness: 0.35 });
+  const [yc, ye] = txGlass('#d1a640');
+  const ymap = txTex(yc, 0.8, 1.0);
+  M.glassY = std({ map: ymap, roughness: 0.12, metalness: 0.35 });
+  M.glassYLit = std({ map: ymap, emissiveMap: txTex(ye, 0.8, 1.0), emissive: '#ffffff', emissiveIntensity: 0, roughness: 0.12, metalness: 0.35 });
+
+  M.stainedOut = [];
+  M.stainedIn = [];
+  for (let s = 0; s < 3; s++) {
+    const t = txTex(txStained(s), 1, 1);
+    M.stainedOut.push(std({ map: t, color: '#6d6a66', roughness: 0.2, metalness: 0.25, emissiveMap: t, emissive: '#ffffff', emissiveIntensity: 0 }));
+    M.stainedIn.push(new THREE.MeshBasicMaterial({ map: t }));
+  }
+  const rose = txTex(txRose(), 1, 1);
+  M.roseOut = std({ map: rose, color: '#6d6a66', roughness: 0.2, metalness: 0.25, emissiveMap: rose, emissive: '#ffffff', emissiveIntensity: 0 });
+  M.roseIn = new THREE.MeshBasicMaterial({ map: rose });
+
+  M.klinker = std({ map: txTex(txKlinker(), 1, 1), roughness: 0.9 });
+  M.sidewalk = std({ map: txTex(txKlinker('#8a8580'), 1, 1), roughness: 0.9 });
+  M.asphalt = std({ map: txTex(txNoise('#3b3d40', 256, 22), 4, 4), roughness: 0.95 });
+  M.bikeLane = std({ map: txTex(txNoise('#8b3d33', 256, 20), 4, 4), roughness: 0.95 });
+  M.grass = std({ map: txTex(txNoise('#5b7a35', 256, 26, 220, '#2c3d16'), 4, 4), roughness: 1 });
+  M.gravel = std({ map: txTex(txNoise('#b6a88d', 256, 60), 2, 2), roughness: 1 });
+  M.marking = std({ color: '#e8e6df', roughness: 0.8 });
+  M.hedge = std({ color: '#33502a', roughness: 1, flatShading: true });
+
+  const [mc, me] = txModern();
+  M.modern = std({ map: txTex(mc, 12, 12), emissiveMap: txTex(me, 12, 12), emissive: '#ffffff', emissiveIntensity: 0, roughness: 0.85 });
+
+  M.bulb = std({ color: '#fff3d6', emissive: '#ffd08a', emissiveIntensity: 0.2 });
+  M.flame = new THREE.MeshBasicMaterial({ color: '#ffcf70' });
+  M.headlight = std({ color: '#f4f1e8', emissive: '#fff4d8', emissiveIntensity: 0.2 });
+  M.taillight = std({ color: '#7a1010', emissive: '#ff2a1a', emissiveIntensity: 0.2 });
+  return M;
+}
+
+// ===== plan.js =====================================================
+// Alle maten van het Missiehuis van de Missionarissen van het Heilig Hart
+// ("de Rooi Harten"), Bredaseweg 204, Tilburg.
+//
+// Assenstelsel: x loopt langs de Bredaseweg (+x = oost), y omhoog, z van de
+// straat het terrein in (+z = zuid). De gevellijn van de vleugels ligt op
+// z = 0, het midden van de middentoren op x = 0.
+//
+// Er zijn geen bouwtekeningen gebruikt: de maten zijn afgeleid uit foto's,
+// het aantal vensterassen en de redengevende omschrijving van het
+// rijksmonument (nr. 521152). Zie README.md.
+
+// --- hoofdgebouw ------------------------------------------------------------
+const K = {
+  plinth: 1.6,        // hoge, uitspringende plint met souterrainvensters
+  band1: [6.05, 6.6], // tandlijst tussen piano nobile en bovenverdieping
+  frieze: [10.45, 11.05], // rondboogfries onder de gootlijst
+  eaves: 11.45,       // bovenkant gootlijst
+  roofKnee: 15.8,     // knik in het mansardedak
+  roofTop: 17.0,
+  sill1: 2.3, win1: 3.3,
+  sill2: 7.1, win2: 3.0,
+};
+
+// zes vensterassen aan weerszijden van de middenrisaliet, hoekblokken met
+// bredere vensters
+const WINGS = [
+  { x0: -23.4, x1: -3.4, z0: 0, z1: 13, axes: 6 },
+  { x0: 3.4, x1: 23.4, z0: 0, z1: 13, axes: 6 },
+];
+const PAVILIONS = [
+  { x0: -39.4, x1: -23.4, z0: -1.0, z1: 16, axes: 4, side: -1 },
+  { x0: 23.4, x1: 39.4, z0: -1.0, z1: 16, axes: 4, side: 1 },
+];
+const TOWER = { x0: -3.4, x1: 3.4, z0: -1.4, z1: 13, top: 17.6, ridge: 24.6 };
+
+// verbindingsvleugel naar de kapel en de vleugel van het kleinseminarie (1934)
+const LINK = { x0: -36, x1: -28, z0: 16, z1: 20.7 };
+const SEMINARY = { x0: 25, x1: 37, z0: 16, z1: 38, h: 12.6 };
+
+// --- kapel ------------------------------------------------------------------
+// Eenbeukig, vier traveeen, driezijdig gesloten transeptarmen, vijfzijdig
+// gesloten koor, achtkantige spits op de viering. Haaks op het hoofdgebouw.
+const CH = {
+  cx: -32, hw: 5.5, x0: -37.5, x1: -26.5,
+  z0: 21, bay: 5.5, bays: 4,
+  cross0: 43, cross1: 54, crossZ: 48.5,
+  choir1: 60,
+  arm: 3,             // lengte transeptarm tot de driezijdige sluiting
+  wallH: 14, eave: 13.6, ridge: 22.05,
+  t: 0.7,
+  vaultY: 10,
+  door: { z: 23.75, w: 2.2, h: 4.2 },
+  spireTop: 49,
+};
+
+// --- terrein ----------------------------------------------------------------
+const SITE = { x0: -72, x1: 72, z0: -5, z1: 122 };
+const STREET = { z0: -17, z1: -9, walkN: [-21, -17], walkS: [-9, -5] };
+const CEMETERY = { x0: 36, x1: 58, z0: 92, z1: 112 };
+const STABLES = { x0: -66, x1: -50, z0: 82, z1: 90 };
+
+// Nieuwbouw rond de kloostertuin (2014-2015), indicatief
+const NEWBUILD = [
+  { x0: 48, x1: 66, z0: 24, z1: 54, h: 12.4 },
+  { x0: 48, x1: 66, z0: 62, z1: 86, h: 12.4 },
+  { x0: -68, x1: -56, z0: 26, z1: 62, h: 9.4 },
+  { x0: -36, x1: 28, z0: 108, z1: 118, h: 9.4 },
+];
+
+// --- uitkijkpunten voor de wandelmodus: [x, z, kijkrichting] -------------
+// kijkrichting 0 = naar de straat (-z), PI = het terrein in (+z)
+const SPOTS = {
+  straat: [12.5, -18.6, Math.PI],
+  poort: [5.5, -3.9, 2.75],
+  westhoek: [-52, -2, Math.PI * 0.82],
+  binnenplaats: [2, 24, Math.PI / 2],
+  kapel: [-32, 25.5, Math.PI],
+  koor: [-32, 50.5, Math.PI],
+  tuin: [12, 66, Math.PI * 0.35],
+  kerkhof: [47, 88.5, Math.PI],
+  stallen: [-58, 74, Math.PI],
+};
+const SPOT_NAMES = {
+  straat: 'Bredaseweg', poort: 'Voorplein', westhoek: 'Westhoek', binnenplaats: 'Binnenplaats',
+  kapel: 'Kapel', koor: 'Koor en viering', tuin: 'Kloostertuin', kerkhof: 'Kerkhof', stallen: 'Stallen',
+};
+
+/** Naam van het gebied waar een punt ligt. */
+function zoneAt(x, z) {
+  if (z < STREET.walkS[1] && z > STREET.walkN[0]) return 'Bredaseweg';
+  if (z <= STREET.walkN[0]) return 'Overkant Bredaseweg';
+  if (x > CH.x0 - CH.arm - 5.5 && x < CH.x1 + CH.arm + 5.5 && z > CH.z0 && z < CH.choir1 + 5.6) {
+    const inNave = x > CH.x0 && x < CH.x1;
+    const inCross = z > CH.cross0 && z < CH.cross1;
+    if (inNave || inCross || z > CH.choir1) {
+      if (z > CH.cross1) return 'Kapel · koor';
+      if (z > CH.cross0) return 'Kapel · viering';
+      return 'Kapel · schip';
+    }
+  }
+  if (x > CEMETERY.x0 && x < CEMETERY.x1 && z > CEMETERY.z0 && z < CEMETERY.z1) return 'Kerkhof';
+  if (z < 0) return 'Voorplein';
+  if (z < 40 && x > -26 && x < 25) return 'Binnenplaats';
+  if (x < -45 && z < 70) return 'Westzijde';
+  return 'Kloostertuin';
+}
+
+const P = { K, WINGS, PAVILIONS, TOWER, LINK, SEMINARY, CH, SITE, STREET, CEMETERY, STABLES, NEWBUILD, SPOTS, SPOT_NAMES, zoneAt };
+// ===== kit.js ======================================================
+// Bouwdoos: gedeelde bouwstenen voor het klooster, de kapel en de omgeving.
+//
+// Alles wat dezelfde materiaal heeft wordt via een Batch samengevoegd tot een
+// enkele mesh; het klooster telt duizenden onderdelen en zou anders evenzoveel
+// draw calls kosten. Geometrie krijgt UV's in meters (zie textures.js).
+
+/** Botsing, steunvlakken en plattegrond, gevuld tijdens het bouwen. */
+const world = {
+  colliders: [],   // { x0, z0, x1, z1, y0, y1 }
+  walls: [],       // { ax, az, bx, bz, t, y0, y1 } - wanden onder een hoek
+  supports: [],    // { y, test(x, z) } - beloopbare vlakken boven maaiveld
+  footprints: [],  // { pts: [[x, z], ...], fill } - voor de plattegrond
+};
+
+// Reproduceerbaar toeval, zodat verlichte ramen en bomen bij elk laden
+// hetzelfde staan.
+function rng(seed) {
+  return () => {
+    seed = (seed + 0x6D2B79F5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+const rand = rng(1899);
+
+// --------------------------------------------------------------------------
+class Batch {
+  constructor() { this.groups = new Map(); }
+
+  add(mat, geo) {
+    let g = geo.index ? geo.toNonIndexed() : geo;
+    for (const k of Object.keys(g.attributes)) {
+      if (k !== 'position' && k !== 'normal' && k !== 'uv') g.deleteAttribute(k);
+    }
+    if (!g.attributes.uv) {
+      g.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array(g.attributes.position.count * 2), 2));
+    }
+    if (!g.attributes.normal) g.computeVertexNormals();
+    g.clearGroups();
+    if (!this.groups.has(mat)) this.groups.set(mat, []);
+    this.groups.get(mat).push(g);
+  }
+
+  flush(parent, cast = true) {
+    const out = [];
+    for (const [mat, list] of this.groups) {
+      const mesh = new THREE.Mesh(mergeGeometries(list, false), mat);
+      mesh.castShadow = cast && !mat.transparent;
+      mesh.receiveShadow = true;
+      parent.add(mesh);
+      out.push(mesh);
+    }
+    this.groups.clear();
+    return out;
+  }
+}
+
+// --------------------------------------------------------------------------
+// Geveloriëntatie: de lokale +z van een gevelframe wijst naar buiten.
+const F = { zMin: Math.PI, zMax: 0, xMax: Math.PI / 2, xMin: -Math.PI / 2 };
+
+function frameAt(x, y, z, angle) {
+  return new THREE.Matrix4().makeRotationY(angle).setPosition(x, y, z);
+}
+
+/** Doos met UV's in meters; met worldUV lopen de lagen door over dozen heen. */
+function boxGeo(x0, y0, z0, x1, y1, z1, worldUV = true) {
+  const sx = x1 - x0, sy = y1 - y0, sz = z1 - z0;
+  const g = new THREE.BoxGeometry(sx, sy, sz);
+  const uv = g.attributes.uv;
+  // vlakvolgorde in BoxGeometry: +x, -x, +y, -y, +z, -z
+  const dims = [[sz, sy], [sz, sy], [sx, sz], [sx, sz], [sx, sy], [sx, sy]];
+  const offs = worldUV
+    ? [[z0, y0], [z0, y0], [x0, z0], [x0, z0], [x0, y0], [x0, y0]]
+    : [[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0]];
+  for (let f = 0; f < 6; f++) {
+    for (let i = 0; i < 4; i++) {
+      const k = f * 4 + i;
+      uv.setXY(k, uv.getX(k) * dims[f][0] + offs[f][0], uv.getY(k) * dims[f][1] + offs[f][1]);
+    }
+  }
+  g.translate((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2);
+  return g;
+}
+
+/** Gedraaide doos rond een middelpunt (cx, cz), w langs de hoek, d dwars. */
+function oboxGeo(cx, cz, w, d, y0, y1, angle) {
+  const g = boxGeo(-w / 2, y0, -d / 2, w / 2, y1, d / 2);
+  g.rotateY(-angle);
+  g.translate(cx, 0, cz);
+  return g;
+}
+
+/** Balk van p0 naar p1 (bargeboards, kruisen, fietsframes). */
+function beamGeo(p0, p1, sx, sy = sx) {
+  const d = new THREE.Vector3().subVectors(p1, p0);
+  const L = d.length();
+  const g = new THREE.BoxGeometry(sx, sy, L);
+  const up = Math.abs(d.y) / L > 0.98 ? new THREE.Vector3(1, 0, 0) : new THREE.Vector3(0, 1, 0);
+  const m = new THREE.Matrix4().lookAt(p0, p1, up);
+  m.setPosition(new THREE.Vector3().addVectors(p0, p1).multiplyScalar(0.5));
+  return g.applyMatrix4(m);
+}
+
+function kitUV(a, b, p) {
+  // u langs de onderrand a-b, v loodrecht daarop in het vlak
+  const dir = new THREE.Vector3().subVectors(b, a);
+  const len = dir.length();
+  if (len < 1e-6) return [0, 0];
+  dir.divideScalar(len);
+  const r = new THREE.Vector3().subVectors(p, a);
+  const u = r.dot(dir);
+  const v = r.sub(dir.multiplyScalar(u)).length();
+  return [u, v];
+}
+
+/** Vierhoek a-b-c-d (a, b onder; c, d boven). Mag ontaarden tot driehoek. */
+function quadGeo(a, b, c, d) {
+  let ra = a, rb = b;
+  if (a.distanceTo(b) < 1e-4) { ra = d; rb = c; }
+  const pts = [a, b, c, a, c, d];
+  const pos = [], uv = [];
+  for (const p of pts) {
+    pos.push(p.x, p.y, p.z);
+    uv.push(...kitUV(ra, rb, p));
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  g.computeVertexNormals();
+  return g;
+}
+
+/** Waaier van driehoeken vanuit een top naar een rand (koorsluiting, dak). */
+function fanGeo(apex, ring) {
+  const pos = [], uv = [];
+  for (let i = 0; i < ring.length - 1; i++) {
+    const a = ring[i], b = ring[i + 1];
+    for (const p of [a, b, apex]) {
+      pos.push(p.x, p.y, p.z);
+      uv.push(...kitUV(a, b, p));
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  g.computeVertexNormals();
+  return g;
+}
+
+/**
+ * Dak opgebouwd uit rechthoekige ringen van onder naar boven:
+ * rings = [{ y, x0, x1, z0, z1 }, ...]. Tussen twee ringen ontstaan vier
+ * dakvlakken (zMin, xMax, zMax, xMin). Een ring die in een richting tot een
+ * lijn krimpt geeft een nok; een vlak met materiaal null wordt overgeslagen.
+ * Zo zijn mansardedaken, schilddaken en zadeldaken met topgevel allemaal
+ * dezelfde functie.
+ */
+function ringRoof(batch, rings, mats, cap = true) {
+  const V = (x, y, z) => new THREE.Vector3(x, y, z);
+  const corners = (r) => [V(r.x0, r.y, r.z0), V(r.x1, r.y, r.z0), V(r.x1, r.y, r.z1), V(r.x0, r.y, r.z1)];
+  const names = ['zMin', 'xMax', 'zMax', 'xMin'];
+  for (let i = 0; i < rings.length - 1; i++) {
+    const c0 = corners(rings[i]), c1 = corners(rings[i + 1]);
+    for (let k = 0; k < 4; k++) {
+      const mat = names[k] in mats ? mats[names[k]] : mats.def;
+      if (!mat) continue;
+      const a = c0[k], b = c0[(k + 1) % 4], c = c1[(k + 1) % 4], d = c1[k];
+      if (a.distanceTo(b) < 1e-4 && c.distanceTo(d) < 1e-4) continue;
+      batch.add(mat, quadGeo(a, b, c, d));
+    }
+  }
+  const top = rings[rings.length - 1];
+  if (cap && top.x1 - top.x0 > 0.01 && top.z1 - top.z0 > 0.01) {
+    const c = corners(top);
+    batch.add(mats.cap ?? mats.def, quadGeo(c[0], c[1], c[2], c[3]));
+  }
+}
+
+/** Zadeldak met de nok langs z (axis 'z') of langs x (axis 'x'). */
+function gableRoof(batch, mat, x0, x1, z0, z1, y, ridgeY, axis = 'z', endMat = null) {
+  if (axis === 'z') {
+    const xm = (x0 + x1) / 2;
+    ringRoof(batch, [{ y, x0, x1, z0, z1 }, { y: ridgeY, x0: xm, x1: xm, z0, z1 }],
+      { def: mat, zMin: endMat, zMax: endMat }, false);
+  } else {
+    const zm = (z0 + z1) / 2;
+    ringRoof(batch, [{ y, x0, x1, z0, z1 }, { y: ridgeY, x0, x1, z0: zm, z1: zm }],
+      { def: mat, xMin: endMat, xMax: endMat }, false);
+  }
+}
+
+// --------------------------------------------------------------------------
+// Vensteromtrekken. Lokaal: x = 0 in het midden, y = 0 onderaan.
+
+function riseOf(kind, w) {
+  if (kind === 'seg') return 0.17 * w;
+  if (kind === 'round') return w / 2;
+  if (kind === 'pointed') return 0.866 * w;
+  return 0;
+}
+
+/** Boogpunten van de rechter- naar de linkeraanzet; de aanzetten op hoogte yS. */
+function archArc(kind, w, yS, n = 10) {
+  const pts = [];
+  const hw = w / 2;
+  if (kind === 'seg' || kind === 'round') {
+    const r = riseOf(kind, w);
+    const R = (hw * hw + r * r) / (2 * r);
+    const cy = yS + r - R;
+    const th = Math.asin(Math.min(1, hw / R));
+    for (let i = 0; i <= n; i++) {
+      const p = th - (2 * th * i) / n;
+      pts.push(new THREE.Vector2(R * Math.sin(p), cy + R * Math.cos(p)));
+    }
+  } else if (kind === 'pointed') {
+    // gelijkzijdige spitsboog: straal = breedte, middelpunten in de aanzetten
+    const m = Math.ceil(n / 2);
+    for (let i = 0; i <= m; i++) {
+      const p = (Math.PI / 3) * (i / m);
+      pts.push(new THREE.Vector2(-hw + w * Math.cos(p), yS + w * Math.sin(p)));
+    }
+    for (let i = 1; i <= m; i++) {
+      const p = (2 * Math.PI) / 3 + (Math.PI / 3) * (i / m);
+      pts.push(new THREE.Vector2(hw + w * Math.cos(p), yS + w * Math.sin(p)));
+    }
+  } else {
+    pts.push(new THREE.Vector2(hw, yS), new THREE.Vector2(-hw, yS));
+  }
+  return pts;
+}
+
+/** Gesloten omtrek (tegen de klok in) van een venster w x h. */
+function outline(kind, w, h) {
+  if (kind === 'circle') {
+    const pts = [];
+    for (let i = 0; i < 32; i++) {
+      const a = -Math.PI / 2 + (i / 32) * Math.PI * 2;
+      pts.push(new THREE.Vector2(Math.cos(a) * w / 2, w / 2 + Math.sin(a) * w / 2));
+    }
+    return pts;
+  }
+  const yS = h - riseOf(kind, w);
+  return [new THREE.Vector2(-w / 2, 0), new THREE.Vector2(w / 2, 0), ...archArc(kind, w, yS)];
+}
+
+/** ShapeGeometry van een omtrek, met UV's 0..1 over de omhullende (glas-in-lood). */
+function unitShapeGeo(pts) {
+  const g = new THREE.ShapeGeometry(new THREE.Shape(pts));
+  const box = new THREE.Box2().setFromPoints(pts);
+  const sz = box.getSize(new THREE.Vector2());
+  const p = g.attributes.position, uv = g.attributes.uv;
+  for (let i = 0; i < p.count; i++) {
+    uv.setXY(i, (p.getX(i) - box.min.x) / sz.x, (p.getY(i) - box.min.y) / sz.y);
+  }
+  return g;
+}
+
+/**
+ * Venster op een gesloten gevel: glas, kozijn, middenstijl en kalf, een
+ * strek van donkere baksteen en een stenen lekdorpel. m plaatst de lokale
+ * oorsprong (midden onder het venster, op het geveloppervlak) in de wereld.
+ */
+function windowOn(b, M, m, o) {
+  const { w, h } = o;
+  const kind = o.kind ?? 'seg';
+  const fw = o.fw ?? 0.07;
+  const frameMat = o.frame ?? M.frame;
+  const glass = o.glass ?? (o.lit ? M.glassLit : M.glass);
+  const inner = outline(kind, w - 2 * fw, h - fw).map((p) => new THREE.Vector2(p.x, p.y + fw));
+
+  b.add(glass, new THREE.ShapeGeometry(new THREE.Shape(inner)).translate(0, 0, 0.02).applyMatrix4(m));
+
+  const ring = new THREE.Shape(outline(kind, w, h));
+  ring.holes.push(new THREE.Path(inner));
+  b.add(frameMat, new THREE.ExtrudeGeometry(ring, { depth: 0.06, bevelEnabled: false }).applyMatrix4(m));
+
+  const yS = h - riseOf(kind, w);
+  if (o.mull !== false && kind !== 'circle') {
+    b.add(frameMat, boxGeo(-0.045, fw, 0.0, 0.045, yS + (kind === 'rect' ? -fw : 0), 0.07, false).applyMatrix4(m));
+    const t = (o.transom ?? 0.7) * yS;
+    b.add(frameMat, boxGeo(-w / 2 + fw, t - 0.045, 0.0, w / 2 - fw, t + 0.045, 0.07, false).applyMatrix4(m));
+  }
+  if (o.header !== false && kind !== 'rect' && kind !== 'circle') {
+    const outer = archArc(kind, w + 0.44, yS);
+    const innerArc = archArc(kind, w, yS).reverse();
+    const s = new THREE.Shape([...outer, ...innerArc]);
+    b.add(o.headerMat ?? M.brickDark, new THREE.ExtrudeGeometry(s, { depth: 0.07, bevelEnabled: false }).applyMatrix4(m));
+  }
+  if (o.sill !== false) {
+    b.add(M.stone, boxGeo(-w / 2 - 0.1, -0.1, -0.02, w / 2 + 0.1, 0, 0.16, false).applyMatrix4(m));
+  }
+}
+
+/** Muuranker (siersmeedwerk) op het geveloppervlak. */
+function anchorOn(b, M, m, s = 1) {
+  const g = new THREE.PlaneGeometry(0.32 * s, 0.64 * s);
+  g.translate(0, 0, 0.03);
+  b.add(M.anchor, g.applyMatrix4(m));
+}
+
+/**
+ * Dakkapel met geel geschilderde houten topgevel, leien wangen en dak en een
+ * makelaar in de top. Lokaal: voorkant op z = 0, kijkt naar +z, onderkant y = 0.
+ */
+function dormer(b, M, m, o) {
+  const { w, h } = o;
+  const depth = o.depth ?? 2.2;
+  const front = o.front ?? M.woodYellow;
+  const trim = o.trim ?? M.paintYellow;
+  const gh = (w / 2) * 1.3;
+  const V = (x, y, z) => new THREE.Vector3(x, y, z).applyMatrix4(m);
+
+  b.add(M.slate, boxGeo(-w / 2, 0, -depth, w / 2, h, 0).applyMatrix4(m));
+  const s = new THREE.Shape([
+    new THREE.Vector2(-w / 2 - 0.06, 0), new THREE.Vector2(w / 2 + 0.06, 0),
+    new THREE.Vector2(w / 2 + 0.06, h), new THREE.Vector2(0, h + gh), new THREE.Vector2(-w / 2 - 0.06, h),
+  ]);
+  b.add(front, new THREE.ExtrudeGeometry(s, { depth: 0.1, bevelEnabled: false }).applyMatrix4(m));
+
+  const eo = w / 2 + 0.28, ey = h - 0.16, ry = h + gh + 0.1, zf = 0.4;
+  b.add(M.slate, quadGeo(V(-eo, ey, zf), V(-eo, ey, -depth), V(0, ry, -depth), V(0, ry, zf)));
+  b.add(M.slate, quadGeo(V(eo, ey, -depth), V(eo, ey, zf), V(0, ry, zf), V(0, ry, -depth)));
+  b.add(trim, beamGeo(V(-eo, ey, zf), V(0, ry, zf), 0.07, 0.22));
+  b.add(trim, beamGeo(V(eo, ey, zf), V(0, ry, zf), 0.07, 0.22));
+  // makelaar
+  b.add(trim, boxGeo(-0.06, h + gh - 0.4, zf - 0.08, 0.06, h + gh + 0.75, zf + 0.06, false).applyMatrix4(m));
+
+  const ww = o.ww ?? Math.max(0.8, Math.round((w - 0.45) / 0.8) * 0.8);
+  const wm = m.clone().multiply(new THREE.Matrix4().makeTranslation(0, 0.22, 0.1));
+  windowOn(b, M, wm, {
+    w: ww, h: h - 0.42, kind: 'rect', frame: trim,
+    glass: o.lit ? M.glassYLit : M.glassY, header: false, sill: false, transom: 0.68,
+  });
+}
+
+// --------------------------------------------------------------------------
+/**
+ * Wand van a naar b met echte sparingen (kapel): een geëxtrudeerde omtrek
+ * met gaten. holes: vensters boven de vloer; doors: sparingen vanaf de vloer.
+ * top: optioneel profiel [[u, y], ...] van rechts naar links (topgevel).
+ * Met inside wordt de wand zo gedraaid dat lokaal +z naar buiten wijst.
+ * Geeft de matrix terug waarmee glas en tracering in de sparingen komen.
+ */
+function wallWithHoles(b, mat, ax, az, bx, bz, o) {
+  let dx = bx - ax, dz = bz - az;
+  if (o.inside) {
+    const nx = -dz, nz = dx;
+    if ((o.inside.x - ax) * nx + (o.inside.z - az) * nz > 0) {
+      [ax, az, bx, bz] = [bx, bz, ax, az];
+      dx = -dx; dz = -dz;
+      const L0 = Math.hypot(dx, dz);
+      for (const hh of o.holes ?? []) hh.u = L0 - hh.u;
+      for (const dd of o.doors ?? []) dd.u = L0 - dd.u;
+      if (o.top) o.top = o.top.map(([u, y]) => [L0 - u, y]).reverse();
+    }
+  }
+  const L = Math.hypot(dx, dz);
+  const t = o.t ?? 0.7;
+  const y0 = o.y0 ?? 0;
+  const pts = [new THREE.Vector2(0, 0)];
+  const doors = [...(o.doors ?? [])].sort((p, q) => p.u - q.u);
+  for (const d of doors) {
+    const kind = d.kind ?? 'pointed';
+    const yS = d.h - riseOf(kind, d.w);
+    // de boog begint en eindigt zelf op de aanzetten
+    pts.push(new THREE.Vector2(d.u - d.w / 2, 0));
+    for (const p of archArc(kind, d.w, yS).reverse()) pts.push(new THREE.Vector2(p.x + d.u, p.y));
+    pts.push(new THREE.Vector2(d.u + d.w / 2, 0));
+  }
+  pts.push(new THREE.Vector2(L, 0));
+  if (o.top) for (const [u, y] of o.top) pts.push(new THREE.Vector2(u, y));
+  else pts.push(new THREE.Vector2(L, o.h), new THREE.Vector2(0, o.h));
+
+  const shape = new THREE.Shape(pts);
+  for (const hh of o.holes ?? []) {
+    shape.holes.push(new THREE.Path(outline(hh.kind ?? 'pointed', hh.w, hh.h).map((p) => new THREE.Vector2(p.x + hh.u, p.y + hh.sill))));
+  }
+  const geo = new THREE.ExtrudeGeometry(shape, { depth: t, bevelEnabled: false, curveSegments: 1 });
+  geo.translate(0, 0, -t / 2);
+  const dir = new THREE.Vector3(dx / L, 0, dz / L);
+  const n = new THREE.Vector3(-dz / L, 0, dx / L);
+  const m = new THREE.Matrix4().makeBasis(dir, new THREE.Vector3(0, 1, 0), n).setPosition(ax, y0, az);
+  b.add(mat, geo.applyMatrix4(m));
+
+  if (o.collide !== false) {
+    let u0 = 0;
+    const cut = doors.map((d) => [d.u - d.w / 2, d.u + d.w / 2]);
+    cut.push([L, L]);
+    for (const [c0, c1] of cut) {
+      if (c0 - u0 > 0.05) {
+        world.walls.push({
+          ax: ax + dir.x * u0, az: az + dir.z * u0, bx: ax + dir.x * c0, bz: az + dir.z * c0,
+          t, y0, y1: y0 + (o.h ?? 20),
+        });
+      }
+      u0 = c1;
+    }
+  }
+  return { m, L, t };
+}
+
+/** Punten op een halve veelhoek rond (cx, cz), uitstulpend in richting dir. */
+function polyArc(cx, cz, dir, R, n, y = 0) {
+  const pts = [];
+  for (let i = 0; i <= n; i++) {
+    const a = dir - Math.PI / 2 + (Math.PI * i) / n;
+    pts.push(new THREE.Vector3(cx + R * Math.cos(a), y, cz + R * Math.sin(a)));
+  }
+  return pts;
+}
+
+// --------------------------------------------------------------------------
+function solid(x0, z0, x1, z1, y0 = 0, y1 = 99) {
+  world.colliders.push({ x0, z0, x1, z1, y0, y1 });
+}
+
+function footprint(pts, fill = 'rgba(190,120,95,.55)') {
+  world.footprints.push({ pts, fill });
+}
+
+function rectPrint(x0, z0, x1, z1, fill) {
+  footprint([[x0, z0], [x1, z0], [x1, z1], [x0, z1]], fill);
+}
+
+function supportRect(x0, z0, x1, z1, y) {
+  world.supports.push({ y, test: (x, z) => x > x0 && x < x1 && z > z0 && z < z1 });
+}
+
+function supportPoly(pts, y) {
+  world.supports.push({
+    y,
+    test: (x, z) => {
+      let inside = false;
+      for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+        const [xi, zi] = pts[i], [xj, zj] = pts[j];
+        if ((zi > z) !== (zj > z) && x < ((xj - xi) * (z - zi)) / (zj - zi) + xi) inside = !inside;
+      }
+      return inside;
+    },
+  });
+}
+
+// ===== klooster.js =================================================
+// Het hoofdgebouw: twee verdiepingen op een hoge plint, U-vormig, met een
+// middenrisaliet (toren met houten topgevel), hoekblokken met bredere
+// vensters en een leien mansardedak met geel geschilderde dakkapellen.
+
+function buildKlooster(M) {
+  const group = new THREE.Group();
+  const b = new Batch();
+  const K = P.K;
+  const lit = (p = 0.38) => rand() < p;
+  const nrm = (a) => [Math.sin(a), Math.cos(a)];
+
+  // ---- muurmassa met plint, banden en gootlijst ---------------------------
+  function mass(x0, z0, x1, z1, o = {}) {
+    const top = o.top ?? K.eaves;
+    b.add(o.mat ?? M.brick, boxGeo(x0, K.plinth, z0, x1, top, z1));
+    b.add(M.brickDark, boxGeo(x0 - 0.08, 0, z0 - 0.08, x1 + 0.08, K.plinth, z1 + 0.08));
+    b.add(M.stone, boxGeo(x0 - 0.12, K.plinth - 0.12, z0 - 0.12, x1 + 0.12, K.plinth + 0.04, z1 + 0.12, false));
+    if (o.bands !== false) {
+      b.add(M.stone, boxGeo(x0 - 0.07, K.band1[0] - 0.08, z0 - 0.07, x1 + 0.07, K.band1[0], z1 + 0.07, false));
+      b.add(M.bandKey, boxGeo(x0 - 0.04, K.band1[0], z0 - 0.04, x1 + 0.04, K.band1[1], z1 + 0.04, false));
+      b.add(M.bandArch, boxGeo(x0 - 0.06, K.frieze[0], z0 - 0.06, x1 + 0.06, K.frieze[1], z1 + 0.06, false));
+      b.add(M.paintYellow, boxGeo(x0 - 0.45, K.frieze[1], z0 - 0.45, x1 + 0.45, K.eaves, z1 + 0.45, false));
+    }
+    solid(x0 - 0.1, z0 - 0.1, x1 + 0.1, z1 + 0.1);
+    rectPrint(x0, z0, x1, z1);
+  }
+
+  // ---- gevel met n vensterassen tussen twee punten op het geveloppervlak --
+  function facade(ax, az, bx, bz, angle, n, o = {}) {
+    const w = o.w ?? 1.6;
+    const [nx, nz] = nrm(angle);
+    for (let i = 0; i < n; i++) {
+      const t = (i + 0.5) / n;
+      const x = ax + (bx - ax) * t, z = az + (bz - az) * t;
+      windowOn(b, M, frameAt(x, K.sill1, z, angle), { w, h: K.win1, kind: 'seg', lit: lit() });
+      windowOn(b, M, frameAt(x, K.sill2, z, angle), { w, h: K.win2, kind: 'seg', lit: lit() });
+      windowOn(b, M, frameAt(x + nx * 0.08, 0.42, z + nz * 0.08, angle),
+        { w: 0.8, h: 0.72, kind: 'seg', mull: false, header: false, sill: false });
+    }
+    for (let i = 1; i < n; i++) {
+      const t = i / n;
+      const x = ax + (bx - ax) * t, z = az + (bz - az) * t;
+      anchorOn(b, M, frameAt(x, 4.3, z, angle));
+      anchorOn(b, M, frameAt(x, 8.7, z, angle));
+    }
+  }
+
+  // ---- dakkapellen op het onderste (steile) en bovenste dakschild ---------
+  function dormerRow(ax, az, bx, bz, angle, n, big) {
+    const [nx, nz] = nrm(angle);
+    for (let i = 0; i < n; i++) {
+      const t = (i + 0.5) / n;
+      const x = ax + (bx - ax) * t, z = az + (bz - az) * t;
+      if (big(i)) {
+        dormer(b, M, frameAt(x - nx * 0.3, K.eaves + 0.04, z - nz * 0.3, angle), { w: 2.0, h: 2.3, depth: 2.8, lit: lit(0.3) });
+      } else {
+        dormer(b, M, frameAt(x - nx * 1.3, K.roofKnee - 0.12, z - nz * 1.3, angle), { w: 1.0, h: 0.85, depth: 1.8, lit: lit(0.2) });
+      }
+    }
+  }
+
+  // ---- vleugels ------------------------------------------------------------
+  for (const w of P.WINGS) {
+    mass(w.x0, w.z0, w.x1, w.z1);
+    facade(w.x0, w.z0, w.x1, w.z0, F.zMin, w.axes);
+    facade(w.x0, w.z1, w.x1, w.z1, F.zMax, w.axes);
+    const west = w.x1 < 0;
+    // vanaf de toren geteld: grote kapel op de even assen
+    const big = (i) => (west ? w.axes - 1 - i : i) % 2 === 0;
+    dormerRow(w.x0, w.z0, w.x1, w.z0, F.zMin, w.axes, big);
+    dormerRow(w.x0, w.z1, w.x1, w.z1, F.zMax, w.axes, big);
+    // mansardedak; de kopse kanten steken in de daken van toren en hoekblok
+    const o = 0.45, zc = (w.z0 + w.z1) / 2;
+    ringRoof(b, [
+      { y: K.eaves, x0: w.x0 - 3.5, x1: w.x1 + 3.5, z0: w.z0 - o, z1: w.z1 + o },
+      { y: K.roofKnee, x0: w.x0 - 3.5, x1: w.x1 + 3.5, z0: w.z0 - o + 1.5, z1: w.z1 + o - 1.5 },
+      { y: K.roofTop, x0: w.x0 - 3.5, x1: w.x1 + 3.5, z0: zc - 1.0, z1: zc + 1.0 },
+    ], { def: M.slate, xMin: null, xMax: null });
+  }
+
+  // ---- hoekblokken ---------------------------------------------------------
+  for (const p of P.PAVILIONS) {
+    mass(p.x0, p.z0, p.x1, p.z1);
+    facade(p.x0, p.z0, p.x1, p.z0, F.zMin, p.axes, { w: 2.4 });
+    const xs = p.side < 0 ? p.x0 : p.x1;
+    facade(xs, p.z0, xs, p.z1, p.side < 0 ? F.xMin : F.xMax, p.axes, { w: 2.4 });
+    facade(p.x0, p.z1, p.x1, p.z1, F.zMax, p.axes);
+    const mid = (i) => i === 1 || i === 2;
+    dormerRow(p.x0, p.z0, p.x1, p.z0, F.zMin, p.axes, mid);
+    dormerRow(xs, p.z0, xs, p.z1, p.side < 0 ? F.xMin : F.xMax, p.axes, mid);
+    dormerRow(p.x0, p.z1, p.x1, p.z1, F.zMax, p.axes, () => true);
+
+    const o = 0.45;
+    const r0 = { y: K.eaves, x0: p.x0 - o, x1: p.x1 + o, z0: p.z0 - o, z1: p.z1 + o };
+    const inset = (r, d, y) => ({ y, x0: r.x0 + d, x1: r.x1 - d, z0: r.z0 + d, z1: r.z1 - d });
+    const r2 = inset(r0, 4.2, 18.0);
+    ringRoof(b, [r0, inset(r0, 1.5, K.roofKnee), r2], { def: M.slate });
+    // zinken randen langs het platte bovenvlak
+    for (const [a0, c0, a1, c1] of [[r2.x0, r2.z0, r2.x1, r2.z0], [r2.x0, r2.z1, r2.x1, r2.z1], [r2.x0, r2.z0, r2.x0, r2.z1], [r2.x1, r2.z0, r2.x1, r2.z1]]) {
+      b.add(M.zinc, boxGeo(Math.min(a0, a1) - 0.06, 17.98, Math.min(c0, c1) - 0.06, Math.max(a0, a1) + 0.06, 18.16, Math.max(c0, c1) + 0.06, false));
+    }
+    // schoorstenen
+    for (const [cx, cz] of [[p.x0 + 5, p.z0 + 6], [p.x1 - 5, p.z1 - 6]]) {
+      b.add(M.brick, boxGeo(cx - 0.5, 15.5, cz - 0.7, cx + 0.5, 20.0, cz + 0.7));
+      b.add(M.stone, boxGeo(cx - 0.62, 20.0, cz - 0.82, cx + 0.62, 20.25, cz + 0.82, false));
+      b.add(M.brickDark, boxGeo(cx - 0.4, 20.25, cz - 0.55, cx + 0.4, 20.5, cz + 0.55));
+    }
+  }
+
+  // ---- middenrisaliet (toren) ----------------------------------------------
+  const T = P.TOWER;
+  mass(T.x0, T.z0, T.x1, T.z1, { top: T.top, bands: false });
+  b.add(M.stone, boxGeo(T.x0 - 0.07, K.band1[0] - 0.08, T.z0 - 0.07, T.x1 + 0.07, K.band1[0], T.z1 + 0.07, false));
+  b.add(M.bandKey, boxGeo(T.x0 - 0.04, K.band1[0], T.z0 - 0.04, T.x1 + 0.04, K.band1[1], T.z1 + 0.04, false));
+  b.add(M.bandArch, boxGeo(T.x0 - 0.06, T.top - 0.9, T.z0 - 0.06, T.x1 + 0.06, T.top - 0.3, T.z1 + 0.06, false));
+  b.add(M.paintYellow, boxGeo(T.x0 - 0.3, T.top - 0.3, T.z0 - 0.3, T.x1 + 0.3, T.top, T.z1 + 0.3, false));
+
+  const zf = T.z0;
+  // ingang: spitsboog met dubbele deur en een vijfpas in het boogveld
+  const ent = frameAt(0, 0.25, zf, F.zMin);
+  b.add(M.dark, new THREE.ShapeGeometry(new THREE.Shape(outline('pointed', 3.0, 5.4))).translate(0, 0, 0.01).applyMatrix4(ent));
+  {
+    const yS = 5.4 - 0.866 * 3.0;
+    const s = new THREE.Shape([...archArc('pointed', 3.8, yS), ...archArc('pointed', 3.0, yS).reverse()]);
+    b.add(M.brickDark, new THREE.ExtrudeGeometry(s, { depth: 0.16, bevelEnabled: false }).applyMatrix4(ent));
+    for (const sx of [-1, 1]) b.add(M.brickDark, boxGeo(sx * 1.5 - 0.2, 0, 0, sx * 1.5 + 0.2, yS, 0.16, false).translate(sx * 0.2, 0, 0).applyMatrix4(ent));
+    b.add(M.oakDoor, boxGeo(-1.32, 0, 0.0, 1.32, 2.78, 0.1, false).applyMatrix4(ent));
+    b.add(M.dark, boxGeo(-0.02, 0, 0.1, 0.02, 2.78, 0.12, false).applyMatrix4(ent));
+    b.add(M.stone, boxGeo(-1.45, 2.78, 0, 1.45, 2.95, 0.14, false).applyMatrix4(ent));
+    for (const sx of [-1, 1]) {
+      for (const hy of [0.6, 2.1]) {
+        b.add(M.iron, boxGeo(sx * 0.15, hy - 0.04, 0.1, sx * 1.1, hy + 0.04, 0.13, false).applyMatrix4(ent));
+      }
+    }
+    const rose = unitShapeGeo(outline('circle', 2.0, 2.0)).translate(0, 3.0, 0.03).applyMatrix4(ent);
+    b.add(M.roseOut, rose);
+    const tor = (r, x, y) => new THREE.TorusGeometry(r, 0.06, 6, 40).translate(x, y, 0.07).applyMatrix4(ent);
+    b.add(M.frame, tor(1.0, 0, 4.0));
+    for (let k = 0; k < 5; k++) {
+      const a = Math.PI / 2 + (k / 5) * Math.PI * 2;
+      b.add(M.frame, tor(0.36, Math.cos(a) * 0.52, 4.0 + Math.sin(a) * 0.52));
+    }
+  }
+  // bordes
+  b.add(M.granite, boxGeo(-2.4, 0, zf - 1.5, 2.4, 0.09, zf));
+  b.add(M.granite, boxGeo(-2.1, 0.09, zf - 1.0, 2.1, 0.17, zf));
+  b.add(M.granite, boxGeo(-1.8, 0.17, zf - 0.5, 1.8, 0.25, zf));
+
+  // venstergroep boven de ingang en de reliëfplaat (1933)
+  for (const sx of [-1, 1]) {
+    windowOn(b, M, frameAt(sx * 1.0, K.sill2, zf, F.zMin), { w: 1.6, h: 3.0, kind: 'round', lit: lit() });
+  }
+  {
+    const rel = frameAt(0, 11.4, zf, F.zMin);
+    b.add(M.stone, new THREE.ExtrudeGeometry(new THREE.Shape(outline('round', 3.6, 3.4)), { depth: 0.14, bevelEnabled: false }).applyMatrix4(rel));
+    const fig = (geo, x, y, rz = 0) => b.add(M.stone, geo.rotateZ(rz).translate(x, y, 0.3).applyMatrix4(rel));
+    fig(new THREE.CapsuleGeometry(0.3, 1.3, 4, 10), 0, 1.25);
+    fig(new THREE.SphereGeometry(0.21, 12, 10), 0, 2.2);
+    fig(new THREE.CapsuleGeometry(0.26, 0.55, 4, 10), -1.0, 0.75, 0.45);
+    fig(new THREE.SphereGeometry(0.19, 12, 10), -0.88, 1.32);
+    fig(new THREE.CapsuleGeometry(0.26, 0.55, 4, 10), 1.0, 0.75, -0.45);
+    fig(new THREE.SphereGeometry(0.19, 12, 10), 0.88, 1.32);
+  }
+  for (const sx of [-1, 1]) {
+    anchorOn(b, M, frameAt(sx * 2.6, 4.4, zf, F.zMin));
+    anchorOn(b, M, frameAt(sx * 2.6, 8.8, zf, F.zMin));
+    anchorOn(b, M, frameAt(sx * 2.6, 13.0, zf, F.zMin));
+  }
+
+  // schilddak met houten topgevel aan de voorzijde
+  ringRoof(b, [
+    { y: T.top, x0: T.x0 - 0.5, x1: T.x1 + 0.5, z0: T.z0 - 0.5, z1: T.z1 + 0.5 },
+    { y: T.ridge, x0: 0, x1: 0, z0: T.z0 - 0.5, z1: T.z1 - 3.0 },
+  ], { def: M.slate, zMin: M.woodYellow }, false);
+  {
+    const gz = T.z0 - 0.5;
+    windowOn(b, M, frameAt(0, T.top + 0.8, gz, F.zMin), { w: 1.6, h: 2.7, kind: 'pointed', lit: lit(0.5), header: false, sill: false, transom: 0.75 });
+    const V = (x, y, z) => new THREE.Vector3(x, y, z);
+    b.add(M.paintYellow, beamGeo(V(T.x0 - 0.55, T.top - 0.05, gz - 0.08), V(0, T.ridge + 0.1, gz - 0.08), 0.12, 0.32));
+    b.add(M.paintYellow, beamGeo(V(T.x1 + 0.55, T.top - 0.05, gz - 0.08), V(0, T.ridge + 0.1, gz - 0.08), 0.12, 0.32));
+    b.add(M.paintYellow, boxGeo(T.x0 - 0.5, T.top, gz - 0.14, T.x1 + 0.5, T.top + 0.22, gz + 0.02, false));
+    // makelaar met bol en kruis
+    b.add(M.gold, new THREE.SphereGeometry(0.22, 16, 12).translate(0, T.ridge + 0.3, gz + 0.3));
+    b.add(M.iron, boxGeo(-0.05, T.ridge + 0.4, gz + 0.25, 0.05, T.ridge + 2.9, gz + 0.35, false));
+    b.add(M.iron, boxGeo(-0.55, T.ridge + 2.0, gz + 0.25, 0.55, T.ridge + 2.1, gz + 0.35, false));
+    b.add(M.gold, new THREE.SphereGeometry(0.07, 8, 6).translate(0, T.ridge + 2.95, gz + 0.3));
+  }
+
+  // ---- verbindingsvleugel naar de kapel ------------------------------------
+  const L = P.LINK;
+  mass(L.x0, L.z0, L.x1, L.z1);
+  facade(L.x1, L.z0, L.x1, L.z1, F.xMax, 1);
+  facade(L.x0, L.z0, L.x0, L.z1, F.xMin, 1);
+  gableRoof(b, M.slate, L.x0 - 0.45, L.x1 + 0.45, L.z0 - 1.0, L.z1 + 0.3, K.eaves, 15.2, 'z');
+
+  // ---- vleugel van het kleinseminarie (1934) -------------------------------
+  const S = P.SEMINARY;
+  mass(S.x0, S.z0, S.x1, S.z1, { top: S.h, bands: false, mat: M.brick34 });
+  b.add(M.stone, boxGeo(S.x0 - 0.15, S.h, S.z0 - 0.15, S.x1 + 0.15, S.h + 0.35, S.z1 + 0.15, false));
+  b.add(M.stone, boxGeo(S.x0 - 0.06, 5.25, S.z0 - 0.06, S.x1 + 0.06, 5.4, S.z1 + 0.06, false));
+  b.add(M.stone, boxGeo(S.x0 - 0.06, 8.95, S.z0 - 0.06, S.x1 + 0.06, 9.1, S.z1 + 0.06, false));
+  const semi = (ax, az, bx, bz, angle, n) => {
+    for (let i = 0; i < n; i++) {
+      const t = (i + 0.5) / n;
+      const x = ax + (bx - ax) * t, z = az + (bz - az) * t;
+      for (const [sill, h] of [[2.3, 2.4], [6.0, 2.4], [9.6, 2.2]]) {
+        windowOn(b, M, frameAt(x, sill, z, angle), { w: 1.6, h, kind: 'rect', header: false, lit: lit(0.4) });
+        b.add(M.stone, boxGeo(-0.95, h, 0, 0.95, h + 0.22, 0.08, false).applyMatrix4(frameAt(x, sill, z, angle)));
+      }
+    }
+  };
+  semi(S.x0, S.z0, S.x0, S.z1, F.xMin, 6);
+  semi(S.x1, S.z0, S.x1, S.z1, F.xMax, 6);
+  semi(S.x0, S.z1, S.x1, S.z1, F.zMax, 3);
+
+  b.flush(group);
+
+  // lantaarn bij de ingang
+  const lights = [];
+  const lamp = new THREE.PointLight(0xffd6a0, 0, 16, 2);
+  lamp.position.set(0, 3.4, zf - 1.2);
+  group.add(lamp);
+  lights.push(lamp);
+  return { group, lights };
+}
+
+// ===== kapel.js ====================================================
+// De neogotische kapel van het Heilig Hart (1897): eenbeukig schip van vier
+// traveeen, driezijdig gesloten transeptarmen, vijfzijdig gesloten koor,
+// steunberen, spitsboogvensters met glas-in-lood en een hoge achtkantige
+// spits op de viering. Binnen: kruisribgewelven in schoon metselwerk op
+// marmeren zuilen, banken, koortribune met orgel en een neogotisch altaar.
+
+function buildKapel(M) {
+  const C = P.CH;
+  const group = new THREE.Group();
+  const b = new Batch();       // buitenkant, wanden, daken
+  const inb = new Batch();     // inrichting
+  const vb = new Batch();      // gewelven: werpen geen schaduw
+  const V = (x, y, z) => new THREE.Vector3(x, y, z);
+  const { x0, x1, cx, z0, t } = C;
+  const R = C.ridge;
+  let seed = 0;
+
+  // ---- glas-in-lood met tracering in een sparing ---------------------------
+  function glazing(m, hh) {
+    const kind = hh.kind ?? 'pointed';
+    const pts = outline(kind, hh.w, hh.h).map((p) => new THREE.Vector2(p.x + hh.u, p.y + hh.sill));
+    const s = seed++ % 3;
+    const outMat = kind === 'circle' ? M.roseOut : M.stainedOut[s];
+    const inMat = kind === 'circle' ? M.roseIn : M.stainedIn[s];
+    b.add(outMat, unitShapeGeo(pts).translate(0, 0, 0.05).applyMatrix4(m));
+    b.add(inMat, unitShapeGeo(pts).rotateY(Math.PI).translate(2 * hh.u, 0, -0.05).applyMatrix4(m));
+    if (kind === 'circle') {
+      const r = hh.w / 2, cy = hh.sill + r;
+      b.add(M.stone, new THREE.TorusGeometry(r - 0.05, 0.09, 6, 40).translate(hh.u, cy, 0).applyMatrix4(m));
+      for (let k = 0; k < 6; k++) {
+        const a = (k / 6) * Math.PI * 2;
+        b.add(M.stone, new THREE.TorusGeometry(r * 0.32, 0.06, 6, 28).translate(hh.u + Math.cos(a) * r * 0.55, cy + Math.sin(a) * r * 0.55, 0).applyMatrix4(m));
+      }
+      return;
+    }
+    const yS = hh.sill + hh.h - riseOf(kind, hh.w);
+    b.add(M.stone, boxGeo(hh.u - 0.06, hh.sill, -0.12, hh.u + 0.06, yS + 0.05, 0.12, false).applyMatrix4(m));
+    b.add(M.stone, new THREE.TorusGeometry(hh.w * 0.22, 0.05, 6, 24).translate(hh.u, yS + hh.w * 0.42, 0).applyMatrix4(m));
+    b.add(M.stone, boxGeo(hh.u - hh.w / 2 - 0.12, hh.sill - 0.14, t / 2 - 0.1, hh.u + hh.w / 2 + 0.12, hh.sill, t / 2 + 0.16, false).applyMatrix4(m));
+  }
+
+  function wall(ax, az, bx, bz, o) {
+    const r = wallWithHoles(b, M.brick, ax, az, bx, bz, { t, h: C.wallH, ...o });
+    for (const hh of o.holes ?? []) glazing(r.m, hh);
+    // lekdorpel en rondboogfries langs de buitenkant
+    b.add(M.stone, boxGeo(0, 4.68, t / 2 - 0.02, r.L, 4.84, t / 2 + 0.14, false).applyMatrix4(r.m));
+    b.add(M.bandArch, boxGeo(0, 13.0, t / 2 - 0.02, r.L, 13.6, t / 2 + 0.08, false).applyMatrix4(r.m));
+    // plint in donkere steen, onderbroken bij deuren (de u's zijn nu die van r.m)
+    const cuts = (o.doors ?? []).map((d) => [d.u - d.w / 2 - 0.3, d.u + d.w / 2 + 0.3]).sort((p, q) => p[0] - q[0]);
+    let u0 = 0;
+    for (const [c0, c1] of [...cuts, [r.L, r.L]]) {
+      if (c0 > u0) b.add(M.brickDark, boxGeo(u0, 0, t / 2 - 0.02, c0, 0.9, t / 2 + 0.08).applyMatrix4(r.m));
+      u0 = c1;
+    }
+    return r;
+  }
+
+  const lanc = (u, w = 1.8, h = 7.5, sill = 5.0) => ({ u, w, h, sill });
+  const naveIn = { x: cx, z: 32 };
+
+  // ---- schip ---------------------------------------------------------------
+  const bays = [...Array(C.bays)].map((_, k) => (k + 0.5) * C.bay);
+  wall(x0, z0, x0, C.cross0, { inside: naveIn, holes: bays.map((u) => lanc(u)) });
+  const door = { u: C.door.z - z0, w: C.door.w, h: C.door.h };
+  const east = wall(x1, z0, x1, C.cross0, { inside: naveIn, holes: bays.map((u) => lanc(u)), doors: [door] });
+  // voorgevel met topgevel en roosvenster boven de verbindingsvleugel
+  const W = x1 - x0;
+  wall(x0, z0, x1, z0, {
+    inside: naveIn, top: [[W, C.wallH], [W / 2, R + 0.35], [0, C.wallH]],
+    holes: [{ u: W / 2, w: 3.2, h: 3.2, sill: 15.6, kind: 'circle' }],
+  });
+  b.add(M.stone, beamGeo(V(x0 - 0.15, C.wallH, z0), V(cx, R + 0.5, z0), 0.85, 0.22));
+  b.add(M.stone, beamGeo(V(x1 + 0.15, C.wallH, z0), V(cx, R + 0.5, z0), 0.85, 0.22));
+  b.add(M.iron, boxGeo(cx - 0.06, R + 0.4, z0 - 0.06, cx + 0.06, R + 2.2, z0 + 0.06, false));
+  b.add(M.iron, boxGeo(cx - 0.5, R + 1.55, z0 - 0.06, cx + 0.5, R + 1.67, z0 + 0.06, false));
+
+  // spitsboog in natuursteen om de zijdeur, open deuren naar binnen
+  {
+    const { m } = east;
+    const yS = door.h - riseOf('pointed', door.w);
+    const s = new THREE.Shape([...archArc('pointed', door.w + 0.6, yS), ...archArc('pointed', door.w, yS).reverse()]);
+    b.add(M.stone, new THREE.ExtrudeGeometry(s, { depth: 0.14, bevelEnabled: false }).translate(door.u, 0, t / 2).applyMatrix4(m));
+    for (const sx of [-1, 1]) {
+      b.add(M.stone, boxGeo(door.u + sx * (door.w / 2 + 0.15) - 0.15, 0, t / 2, door.u + sx * (door.w / 2 + 0.15) + 0.15, yS, t / 2 + 0.14, false).applyMatrix4(m));
+      const hx = door.u + sx * door.w / 2;
+      inb.add(M.oakDoor, boxGeo(Math.min(hx, hx - sx * 0.08), 0, -t / 2 - door.w / 2, Math.max(hx, hx - sx * 0.08), 3.1, -t / 2, false).applyMatrix4(m));
+    }
+    b.add(M.granite, boxGeo(door.u - 1.6, 0, t / 2, door.u + 1.6, 0.1, t / 2 + 1.2, false).applyMatrix4(m));
+  }
+
+  // ---- transept met driezijdige sluitingen ---------------------------------
+  const arms = [
+    { xa: x0, xe: x0 - C.arm, dir: Math.PI },
+    { xa: x1, xe: x1 + C.arm, dir: 0 },
+  ];
+  const armPts = [];
+  for (const a of arms) {
+    const inside = { x: a.xe, z: C.crossZ };
+    wall(a.xa, C.cross0, a.xe, C.cross0, { inside });
+    wall(a.xe, C.cross1, a.xa, C.cross1, { inside });
+    const pts = polyArc(a.xe, C.crossZ, a.dir, C.hw, 3);
+    for (let i = 0; i < pts.length - 1; i++) {
+      wall(pts[i].x, pts[i].z, pts[i + 1].x, pts[i + 1].z, { inside, holes: [lanc(C.hw / 2, 1.6, 7.0, 5.5)] });
+    }
+    armPts.push(pts);
+  }
+
+  // ---- koor met vijfzijdige sluiting ----------------------------------------
+  const choirIn = { x: cx, z: C.choir1 };
+  wall(x0, C.cross1, x0, C.choir1, { inside: choirIn, holes: [lanc(3, 1.6, 7.0, 5.5)] });
+  wall(x1, C.cross1, x1, C.choir1, { inside: choirIn, holes: [lanc(3, 1.6, 7.0, 5.5)] });
+  const apse = polyArc(cx, C.choir1, Math.PI / 2, C.hw, 5);
+  for (let i = 0; i < apse.length - 1; i++) {
+    const L = apse[i].distanceTo(apse[i + 1]);
+    wall(apse[i].x, apse[i].z, apse[i + 1].x, apse[i + 1].z, { inside: choirIn, holes: [lanc(L / 2, 1.2, 7.0, 5.5)] });
+  }
+
+  // ---- steunberen ----------------------------------------------------------
+  function buttress(x, z, ang) {
+    const dx = Math.cos(ang), dz = Math.sin(ang);
+    const at = (off) => [x + dx * off, z + dz * off];
+    const [ax, az] = at(t / 2 + 0.55);
+    b.add(M.brick, oboxGeo(ax, az, 1.1, 0.9, 0, 9, ang));
+    b.add(M.granite, oboxGeo(ax, az, 1.2, 1.0, 9, 9.2, ang));
+    const [bx, bz] = at(t / 2 + 0.35);
+    b.add(M.brick, oboxGeo(bx, bz, 0.7, 0.8, 9.2, 12.4, ang));
+    b.add(M.granite, oboxGeo(bx, bz, 0.8, 0.9, 12.4, 12.6, ang));
+    b.add(M.brickDark, oboxGeo(ax, az, 1.2, 1.0, 0, 0.9, ang));
+    const r = 0.75;
+    solid(ax - r, az - r, ax + r, az + r);
+  }
+  for (let k = 0; k <= C.bays; k++) {
+    const z = z0 + k * C.bay;
+    if (k === 0) {
+      buttress(x0, z, Math.PI * 1.25);
+      buttress(x1, z, Math.PI * 1.75);
+    } else if (k < C.bays) {
+      buttress(x0, z, Math.PI);
+      buttress(x1, z, 0);
+    }
+  }
+  for (const [i, pts] of armPts.entries()) {
+    const a = arms[i];
+    for (const p of pts) buttress(p.x, p.z, Math.atan2(p.z - C.crossZ, p.x - a.xe));
+  }
+  for (const p of apse) buttress(p.x, p.z, Math.atan2(p.z - C.choir1, p.x - cx));
+  buttress(x0, C.cross0, Math.PI * 1.25);
+  buttress(x1, C.cross0, Math.PI * 1.75);
+  buttress(x0, C.cross1, Math.PI * 0.75);
+  buttress(x1, C.cross1, Math.PI * 0.25);
+
+  // ---- daken -----------------------------------------------------------------
+  // Schip- en transeptdak kruisen boven de viering. Elk dakvlak stopt bij de
+  // kilgoot op de diagonaal, anders steken de vlakken door het gewelf heen.
+  const ov = 0.6, ex0 = x0 - ov, ex1 = x1 + ov;
+  const ax0 = x0 - C.arm, ax1 = x1 + C.arm;
+  const k0 = C.cross0 - ov, k1 = C.cross1 + ov, kz = C.crossZ, zs = z0 - 0.4;
+  for (const ex of [ex0, ex1]) {
+    b.add(M.slate, quadGeo(V(ex, C.eave, zs), V(ex, C.eave, k0), V(cx, R, kz), V(cx, R, zs)));
+    b.add(M.slate, quadGeo(V(ex, C.eave, k1), V(ex, C.eave, C.choir1), V(cx, R, C.choir1), V(cx, R, kz)));
+  }
+  for (const kk of [k0, k1]) {
+    b.add(M.slate, quadGeo(V(ax0, C.eave, kk), V(ex0, C.eave, kk), V(cx, R, kz), V(ax0, R, kz)));
+    b.add(M.slate, quadGeo(V(ex1, C.eave, kk), V(ax1, C.eave, kk), V(ax1, R, kz), V(cx, R, kz)));
+  }
+  for (const a of arms) b.add(M.slate, fanGeo(V(a.xe, R, C.crossZ), polyArc(a.xe, C.crossZ, a.dir, C.hw + ov, 3, C.eave)));
+  b.add(M.slate, fanGeo(V(cx, R, C.choir1), polyArc(cx, C.choir1, Math.PI / 2, C.hw + ov, 5, C.eave)));
+  // nokvorsten in zink
+  b.add(M.zinc, boxGeo(cx - 0.1, R - 0.05, z0 - 0.4, cx + 0.1, R + 0.12, C.choir1, false));
+  b.add(M.zinc, boxGeo(ax0, R - 0.05, C.crossZ - 0.1, ax1, R + 0.12, C.crossZ + 0.1, false));
+
+  // kleine dakkapelletjes op het schip
+  const slope = (R - C.eave) / (C.hw + ov);
+  for (const z of [26.5, 32, 37.5]) {
+    const off = (16.0 - C.eave) / slope;
+    dormer(b, M, frameAt(ex0 + off + 0.15, 16.0, z, F.xMin), { w: 0.9, h: 0.75, depth: 1.6, front: M.slate, trim: M.zinc, ww: 0.5 });
+    dormer(b, M, frameAt(ex1 - off - 0.15, 16.0, z, F.xMax), { w: 0.9, h: 0.75, depth: 1.6, front: M.slate, trim: M.zinc, ww: 0.5 });
+  }
+
+  // ---- achtkantige spits op de viering ---------------------------------------
+  const sz = C.crossZ;
+  b.add(M.slateSpire, new THREE.CylinderGeometry(2.5, 2.5, 7.4, 8).translate(cx, 22.6, sz));
+  for (let k = 0; k < 8; k++) {
+    const phi = (k + 0.5) * (Math.PI / 4);
+    const ang = Math.atan2(Math.cos(phi), Math.sin(phi));
+    const px = cx + Math.sin(phi) * 2.33, pz = sz + Math.cos(phi) * 2.33;
+    b.add(M.dark, oboxGeo(px, pz, 0.1, 0.9, 22.6, 25.0, ang));
+    b.add(M.paintYellow, oboxGeo(px + Math.sin(phi) * 0.02, pz + Math.cos(phi) * 0.02, 0.08, 1.05, 25.0, 25.12, ang));
+  }
+  b.add(M.stone, new THREE.CylinderGeometry(2.85, 2.7, 0.35, 8).translate(cx, 26.45, sz));
+  const coneH = C.spireTop - 26.6;
+  b.add(M.slateSpire, new THREE.ConeGeometry(2.75, coneH, 8).translate(cx, 26.6 + coneH / 2, sz));
+  for (let k = 0; k < 4; k++) {
+    const a = Math.PI / 4 + (k * Math.PI) / 2;
+    const px = cx + Math.cos(a) * 2.9, pz = sz + Math.sin(a) * 2.9;
+    b.add(M.stone, boxGeo(px - 0.3, 25.6, pz - 0.3, px + 0.3, 26.6, pz + 0.3));
+    b.add(M.slateSpire, new THREE.ConeGeometry(0.36, 3.2, 8).translate(px, 28.2, pz));
+    b.add(M.gold, new THREE.SphereGeometry(0.1, 8, 6).translate(px, 29.85, pz));
+  }
+  b.add(M.gold, new THREE.SphereGeometry(0.32, 16, 12).translate(cx, C.spireTop + 0.15, sz));
+  b.add(M.iron, boxGeo(cx - 0.07, C.spireTop + 0.4, sz - 0.07, cx + 0.07, C.spireTop + 3.2, sz + 0.07, false));
+  b.add(M.iron, boxGeo(cx - 0.75, C.spireTop + 2.2, sz - 0.07, cx + 0.75, C.spireTop + 2.36, sz + 0.07, false));
+  b.add(M.gold, new THREE.ConeGeometry(0.14, 0.6, 6).translate(cx, C.spireTop + 3.5, sz));
+
+  // ---- interieur: vloeren en koorverhoging --------------------------------------
+  const ix0 = x0 + t / 2, ix1 = x1 - t / 2, iz0 = z0 + t / 2;
+  const Ri = C.hw - t / 2;
+  inb.add(M.floorTiles, boxGeo(ix0, 0, iz0, ix1, 0.04, C.cross1));
+  for (const a of arms) {
+    inb.add(M.floorTiles, boxGeo(Math.min(a.xa, a.xe), 0, C.cross0 + t / 2, Math.max(a.xa, a.xe), 0.04, C.cross1 - t / 2));
+    // ring omgekeerd, zodat de vloer naar boven kijkt
+    inb.add(M.floorTiles, fanGeo(V(a.xe, 0.04, C.crossZ), polyArc(a.xe, C.crossZ, a.dir, Ri, 3, 0.04).reverse()));
+  }
+  inb.add(M.marble, boxGeo(ix0, 0, C.cross1, ix1, 0.22, C.cross1 + 0.6));
+  inb.add(M.floorTiles, boxGeo(ix0, 0, C.cross1 + 0.6, ix1, 0.45, C.choir1));
+  const apseIn = polyArc(cx, C.choir1, Math.PI / 2, Ri, 5, 0.45);
+  inb.add(M.floorTiles, fanGeo(V(cx, 0.45, C.choir1), [...apseIn].reverse()));
+  supportRect(ix0, C.cross1, ix1, C.cross1 + 0.6, 0.22);
+  supportRect(ix0, C.cross1 + 0.6, ix1, C.choir1 + 0.01, 0.45);
+  supportPoly(apseIn.map((p) => [p.x, p.z]), 0.45);
+
+  // ---- gewelven ------------------------------------------------------------------
+  const span = W - t;
+  const vy = C.vaultY;
+  const vTop = vy + 0.866 * span;
+  const shell = (sIn, thick, len) => {
+    const s = new THREE.Shape([...archArc('pointed', sIn + 2 * thick, 0, 24), ...archArc('pointed', sIn, 0, 24).reverse()]);
+    return new THREE.ExtrudeGeometry(s, { depth: len, bevelEnabled: false, curveSegments: 1 });
+  };
+  // tongewelven in schip, koor en transeptarmen, met het kruisingsvak open
+  const cz0 = C.cross0 + t / 2, cz1 = C.cross1 - t / 2;
+  vb.add(M.plaster, shell(span, 0.25, cz0 - iz0).translate(cx, vy, iz0));
+  vb.add(M.plaster, shell(span, 0.25, C.choir1 - cz1).translate(cx, vy, cz1));
+  vb.add(M.plaster, shell(span, 0.25, ix0 - ax0).rotateY(Math.PI / 2).translate(ax0, vy, C.crossZ));
+  vb.add(M.plaster, shell(span, 0.25, ax1 - ix1).rotateY(Math.PI / 2).translate(ix1, vy, C.crossZ));
+  // halve koepels boven de veelhoekige sluitingen, met hetzelfde spitsboog-
+  // profiel als het tongewelf zodat ze er naadloos op aansluiten
+  const profS = (s) => vy + Math.sqrt(Math.max(0, span * span - (s * span / 2 + span / 2) ** 2));
+  const dome = (ccx, ccz, dir, n) => {
+    const edge = polyArc(ccx, ccz, dir, Ri, n);
+    const m = 6, S = 14, cols = n * m + 1;
+    const pos = [];
+    for (let i = 0; i < cols; i++) {
+      const k = Math.min(n - 1, Math.floor(i / m)), f = i / m - k;
+      const px = edge[k].x + (edge[k + 1].x - edge[k].x) * f, pz = edge[k].z + (edge[k + 1].z - edge[k].z) * f;
+      for (let j = 0; j <= S; j++) {
+        const s = j / S;
+        pos.push([ccx + (px - ccx) * s, profS(s), ccz + (pz - ccz) * s]);
+      }
+    }
+    const tri = [];
+    const at = (i, j) => pos[i * (S + 1) + j];
+    for (let i = 0; i < cols - 1; i++) {
+      for (let j = 0; j < S; j++) {
+        tri.push(...at(i, j), ...at(i + 1, j), ...at(i + 1, j + 1), ...at(i, j), ...at(i + 1, j + 1), ...at(i, j + 1));
+      }
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(tri, 3));
+    g.computeVertexNormals();
+    return g;
+  };
+  for (const a of arms) vb.add(M.plaster, dome(a.xe, C.crossZ, a.dir, 3));
+  vb.add(M.plaster, dome(cx, C.choir1, Math.PI / 2, 5));
+
+  // graatgewelf boven de viering: waar twee gelijke tongewelven elkaar
+  // kruisen is het plafond overal het hoogste van de twee profielen
+  {
+    const prof = (d) => vy + Math.sqrt(Math.max(0, span * span - (Math.min(d, span / 2) + span / 2) ** 2));
+    const N = 40;
+    const g = new THREE.PlaneGeometry(ix1 - ix0, cz1 - cz0, N, N).rotateX(Math.PI / 2);
+    const p = g.attributes.position;
+    for (let i = 0; i < p.count; i++) {
+      const x = p.getX(i) + cx, z = p.getZ(i) + C.crossZ;
+      p.setXYZ(i, x, Math.max(prof(Math.abs(x - cx)), prof(Math.abs(z - C.crossZ))), z);
+    }
+    g.computeVertexNormals();
+    vb.add(M.plaster, g);
+  }
+
+  // gordelbogen
+  const ribZ = [1, 2, 3].map((k) => z0 + k * C.bay).concat([C.cross0, C.cross1, C.choir1]);
+  // als buis langs de spitsboog; een geëxtrudeerde sikkelvorm werd bij het
+  // trianguleren soms helemaal dichtgevuld
+  const archRib = (toWorld) => {
+    const pts = archArc('pointed', span - 0.3, 0, 24).map((p) => toWorld(p.x, vy + p.y - 0.05));
+    inb.add(M.vaultRib, new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 48, 0.2, 6, false));
+  };
+  for (const z of ribZ) archRib((u, y) => V(cx + u, y, z));
+  for (const x of [x0, x1]) archRib((u, y) => V(x, y, C.crossZ + u));
+
+  // kruisribben langs het gewelfoppervlak
+  const vaultY = (x) => {
+    const d = Math.min(Math.abs(x - cx), span / 2);
+    return vy + Math.sqrt(Math.max(0, span * span - (d + span / 2) ** 2));
+  };
+  const diag = (xa, za, xb, zb) => {
+    const pts = [];
+    for (let i = 0; i <= 16; i++) {
+      const s = i / 16;
+      const x = xa + (xb - xa) * s, z = za + (zb - za) * s;
+      pts.push(V(x, vaultY(x) - 0.12, z));
+    }
+    inb.add(M.vaultRib, new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 24, 0.13, 6, false));
+  };
+  const bayEdges = [iz0, ...ribZ];
+  for (let i = 0; i < bayEdges.length - 1; i++) {
+    const za = bayEdges[i], zb = bayEdges[i + 1];
+    diag(ix0, za, cx, (za + zb) / 2); diag(cx, (za + zb) / 2, ix1, zb);
+    diag(ix1, za, cx, (za + zb) / 2); diag(cx, (za + zb) / 2, ix0, zb);
+  }
+
+  // ---- marmeren zuilen met vergulde kapitelen ------------------------------------
+  const colZ = [1, 2, 3].map((k) => z0 + k * C.bay).concat([C.cross0, C.cross1]);
+  for (const z of colZ) {
+    for (const x of [ix0 + 0.24, ix1 - 0.24]) {
+      inb.add(M.marble, new THREE.CylinderGeometry(0.22, 0.22, vy - 0.45, 14).translate(x, (vy - 0.45) / 2 + 0.04, z));
+      inb.add(M.granite, new THREE.CylinderGeometry(0.34, 0.36, 0.35, 14).translate(x, 0.2, z));
+      inb.add(M.gold, new THREE.CylinderGeometry(0.42, 0.23, 0.55, 14).translate(x, vy - 0.18, z));
+      solid(x - 0.35, z - 0.35, x + 0.35, z + 0.35);
+    }
+  }
+
+  // ---- banken ----------------------------------------------------------------------
+  const rows = [];
+  for (let z = 25.2; z < 41.2; z += 1.0) rows.push(z);
+  for (const [bx0, bx1] of [[ix0 + 0.8, cx - 1.0], [cx + 1.0, ix1 - 0.8]]) {
+    for (const z of rows) {
+      inb.add(M.oak, boxGeo(bx0, 0.42, z, bx1, 0.47, z + 0.42));
+      inb.add(M.oak, boxGeo(bx0, 0.47, z + 0.42, bx1, 0.98, z + 0.47));
+      inb.add(M.oak, boxGeo(bx0, 0.1, z - 0.32, bx1, 0.17, z - 0.18));
+      for (const ex of [bx0, bx1 - 0.06]) inb.add(M.oak, boxGeo(ex, 0, z - 0.05, ex + 0.06, 1.02, z + 0.5));
+    }
+    solid(bx0, rows[0] - 0.35, bx1, rows[rows.length - 1] + 0.5, 0, 1.05);
+  }
+
+  // ---- koortribune met orgel boven de ingang ---------------------------------------
+  const lz = iz0 + 3.3;
+  inb.add(M.oak, boxGeo(ix0, 4.6, iz0, ix1, 5.0, lz));
+  inb.add(M.oak, boxGeo(ix0, 5.0, lz - 0.12, ix1, 5.95, lz));
+  inb.add(M.gold, boxGeo(ix0, 5.95, lz - 0.16, ix1, 6.05, lz + 0.04));
+  for (let x = ix0 + 0.5; x < ix1 - 0.3; x += 0.6) {
+    inb.add(M.dark, new THREE.ShapeGeometry(new THREE.Shape(outline('pointed', 0.36, 0.6))).translate(x, 5.15, lz + 0.005));
+  }
+  for (const x of [cx - 3.2, cx + 3.2]) {
+    inb.add(M.marble, new THREE.CylinderGeometry(0.2, 0.2, 4.6, 12).translate(x, 2.3, lz - 0.2));
+    solid(x - 0.3, lz - 0.5, x + 0.3, lz + 0.1);
+  }
+  inb.add(M.oak, boxGeo(cx - 3, 5.0, iz0 + 0.1, cx + 3, 10.2, iz0 + 1.3));
+  for (let i = 0; i < 17; i++) {
+    const x = cx - 2.6 + i * 0.325;
+    const k = Math.abs(i - 8);
+    const h = 3.6 - Math.abs(k - 4) * 0.45 + (k === 0 ? 0.6 : 0);
+    inb.add(M.silver, new THREE.CylinderGeometry(0.1, 0.1, h, 10).translate(x, 5.7 + h / 2, iz0 + 1.45));
+    inb.add(M.silver, new THREE.ConeGeometry(0.1, 0.3, 10).rotateX(Math.PI).translate(x, 5.55, iz0 + 1.45));
+  }
+
+  // ---- communiebank, altaren en het Heilig-Hartbeeld --------------------------------
+  const rz = C.cross1 - 0.35;
+  for (const [a, c] of [[ix0, cx - 0.8], [cx + 0.8, ix1]]) {
+    inb.add(M.marble, boxGeo(a, 0.04, rz - 0.12, c, 0.82, rz + 0.12));
+    inb.add(M.gold, boxGeo(a, 0.82, rz - 0.18, c, 0.9, rz + 0.18));
+    solid(a, rz - 0.2, c, rz + 0.2, 0, 1);
+  }
+  const az = C.choir1 + 2.4;
+  inb.add(M.whiteStone, boxGeo(cx - 1.5, 0.45, az - 0.5, cx + 1.5, 1.5, az + 0.45));
+  inb.add(M.oak, boxGeo(cx - 1.3, 1.5, az + 0.3, cx + 1.3, 3.5, az + 0.75));
+  inb.add(M.gold, boxGeo(cx - 1.35, 3.5, az + 0.25, cx + 1.35, 3.62, az + 0.8));
+  inb.add(M.gold, boxGeo(cx - 0.38, 1.5, az - 0.05, cx + 0.38, 2.3, az + 0.35));
+  inb.add(M.gold, new THREE.ConeGeometry(0.42, 2.8, 8).translate(cx, 3.62 + 1.4, az + 0.5));
+  for (const sx of [-1, 1]) inb.add(M.gold, new THREE.ConeGeometry(0.3, 1.9, 8).translate(cx + sx * 0.95, 3.62 + 0.95, az + 0.5));
+  inb.add(M.gold, boxGeo(cx - 0.04, 6.4, az + 0.46, cx + 0.04, 7.1, az + 0.54, false));
+  inb.add(M.gold, boxGeo(cx - 0.22, 6.82, az + 0.46, cx + 0.22, 6.9, az + 0.54, false));
+  for (const dx of [-1.15, -0.8, -0.5, 0.5, 0.8, 1.15]) {
+    inb.add(M.whiteStone, new THREE.CylinderGeometry(0.035, 0.035, 0.45, 8).translate(cx + dx, 1.73, az + 0.15));
+    inb.add(M.flame, new THREE.ConeGeometry(0.025, 0.08, 6).translate(cx + dx, 2.0, az + 0.15));
+  }
+  solid(cx - 1.6, az - 0.6, cx + 1.6, az + 0.9);
+  for (const a of arms) {
+    const s = Math.sign(a.xe - cx);
+    // tegen het middelste vlak van de sluiting (apothema = Ri * cos 30°)
+    const ax = a.xe + s * (Ri * 0.866 - 0.95);
+    inb.add(M.whiteStone, boxGeo(Math.min(ax, ax - s * 0.7), 0.04, C.crossZ - 0.9, Math.max(ax, ax - s * 0.7), 1.05, C.crossZ + 0.9));
+    inb.add(M.gold, boxGeo(Math.min(ax, ax + s * 0.25), 1.05, C.crossZ - 0.7, Math.max(ax, ax + s * 0.25), 2.6, C.crossZ + 0.7));
+    inb.add(M.gold, new THREE.ConeGeometry(0.3, 1.4, 8).translate(ax + s * 0.12, 3.3, C.crossZ));
+  }
+  {
+    const sx = ix1 - 0.7, sz2 = C.cross0 - 0.9;
+    inb.add(M.whiteStone, boxGeo(sx - 0.4, 0.04, sz2 - 0.4, sx + 0.4, 1.4, sz2 + 0.4));
+    inb.add(M.whiteStone, new THREE.CapsuleGeometry(0.24, 0.95, 4, 12).translate(sx, 2.05, sz2));
+    inb.add(M.whiteStone, new THREE.SphereGeometry(0.15, 12, 10).translate(sx, 2.8, sz2));
+    inb.add(M.taillight, new THREE.SphereGeometry(0.075, 10, 8).translate(sx - 0.2, 2.25, sz2));
+    inb.add(M.gold, new THREE.TorusGeometry(0.2, 0.02, 6, 20).rotateY(Math.PI / 2).translate(sx + 0.04, 2.85, sz2));
+    solid(sx - 0.45, sz2 - 0.45, sx + 0.45, sz2 + 0.45);
+  }
+
+  // ---- kroonluchters ----------------------------------------------------------------
+  const lights = [];
+  for (const z of [29.25, 37.5, C.crossZ]) {
+    const top = vaultY(cx) - 0.2;
+    inb.add(M.iron, new THREE.CylinderGeometry(0.025, 0.025, top - 7.6, 6).translate(cx, (top + 7.6) / 2, z));
+    inb.add(M.iron, new THREE.TorusGeometry(0.85, 0.04, 6, 32).rotateX(Math.PI / 2).translate(cx, 7.5, z));
+    for (let k = 0; k < 10; k++) {
+      const a = (k / 10) * Math.PI * 2;
+      inb.add(M.bulb, new THREE.SphereGeometry(0.07, 8, 6).translate(cx + Math.cos(a) * 0.85, 7.62, z + Math.sin(a) * 0.85));
+    }
+    // spots naar beneden in plaats van puntlampen: puntlampen werpen geen
+    // schaduw en zouden door de muren heen het gras buiten verlichten
+    const l = new THREE.SpotLight(0xffd7a0, 0, 16, 0.62, 0.7, 1.4);
+    l.position.set(cx, 7.2, z);
+    l.target.position.set(cx, 0, z);
+    group.add(l, l.target);
+    lights.push(l);
+  }
+
+  // ---- plattegrond --------------------------------------------------------------------
+  const [wPts, ePts] = armPts;
+  const poly = [
+    [x0, z0], [x0, C.cross0], [ax0, C.cross0],
+    ...[...wPts].reverse().map((p) => [p.x, p.z]),
+    [x0, C.cross1], [x0, C.choir1],
+    ...[...apse].reverse().map((p) => [p.x, p.z]),
+    [x1, C.cross1], [ax1, C.cross1],
+    ...[...ePts].reverse().map((p) => [p.x, p.z]),
+    [x1, C.cross0], [x1, z0],
+  ];
+  footprint(poly, 'rgba(214,150,110,.62)');
+
+  b.flush(group);
+  inb.flush(group);
+  vb.flush(group, false);
+  return { group, lights };
+}
+
+// ===== exterior.js =================================================
+// Omgeving: de Bredaseweg met de bebouwing aan de overkant, het voorplein
+// met hekwerk en poortpijlers, de ommuurde kloostertuin met de drie
+// monumentale beuken, het kerkhof, de stallen en de nieuwbouw van 2015.
+
+function buildExterior(M) {
+  const group = new THREE.Group();
+  const b = new Batch();
+  const r = rng(204);
+  const between = (a, c) => a + (c - a) * r();
+  const crowns = [];
+  const lights = [];
+  const S = P.SITE;
+
+  // ---- maaiveld --------------------------------------------------------------
+  const gGeo = new THREE.PlaneGeometry(900, 900).rotateX(-Math.PI / 2);
+  const uv = gGeo.attributes.uv;
+  for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * 900, uv.getY(i) * 900);
+  const ground = new THREE.Mesh(gGeo, M.grass);
+  ground.receiveShadow = true;
+  group.add(ground);
+
+  // ---- Bredaseweg ------------------------------------------------------------------
+  const st = P.STREET, X0 = -260, X1 = 260;
+  b.add(M.asphalt, boxGeo(X0, 0, st.z0, X1, 0.03, st.z1));
+  b.add(M.bikeLane, boxGeo(X0, 0, st.z0, X1, 0.034, st.z0 + 1.6));
+  b.add(M.bikeLane, boxGeo(X0, 0, st.z1 - 1.6, X1, 0.034, st.z1));
+  for (let x = X0; x < X1; x += 6) b.add(M.marking, boxGeo(x, 0, -13.06, x + 3, 0.037, -12.94, false));
+  for (let x = X0; x < X1; x += 2) {
+    b.add(M.marking, boxGeo(x, 0, st.z0 + 1.6, x + 1, 0.037, st.z0 + 1.7, false));
+    b.add(M.marking, boxGeo(x, 0, st.z1 - 1.7, x + 1, 0.037, st.z1 - 1.6, false));
+  }
+  for (const [a, c] of [st.walkN, st.walkS]) {
+    b.add(M.sidewalk, boxGeo(X0, 0, a, X1, 0.12, c));
+    supportRect(X0, a, X1, c, 0.12);
+  }
+  b.add(M.granite, boxGeo(X0, 0, st.z0 - 0.18, X1, 0.14, st.z0));
+  b.add(M.granite, boxGeo(X0, 0, st.z1, X1, 0.14, st.z1 + 0.18));
+
+  // straatlantaarns
+  for (let x = -150; x <= 150; x += 30) {
+    const z = st.walkS[0] + 0.5;
+    b.add(M.iron, new THREE.CylinderGeometry(0.07, 0.11, 7, 8).translate(x, 3.5, z));
+    b.add(M.iron, boxGeo(x - 0.05, 6.85, z - 1.3, x + 0.05, 6.95, z, false));
+    b.add(M.iron, boxGeo(x - 0.25, 6.75, z - 1.75, x + 0.25, 6.95, z - 1.1, false));
+    b.add(M.bulb, boxGeo(x - 0.2, 6.68, z - 1.7, x + 0.2, 6.75, z - 1.15, false));
+  }
+
+  // ---- bebouwing aan de overkant ------------------------------------------------
+  {
+    const zf = st.walkN[0] - 3.5, depth = 10;
+    let x = -160;
+    while (x < 160) {
+      const w = between(5.5, 9.5);
+      const eaves = between(6.2, 9.4);
+      const brick = M.houseBricks[(r() * M.houseBricks.length) | 0];
+      b.add(brick, boxGeo(x, 0, zf - depth, x + w, eaves, zf));
+      b.add(M.stone, boxGeo(x - 0.05, eaves - 0.25, zf - depth - 0.25, x + w + 0.05, eaves, zf + 0.25, false));
+      const ridge = eaves + between(2.8, 4.2);
+      const tiles = r() < 0.6 ? M.tilesDark : M.tilesRed;
+      ringRoof(b, [
+        { y: eaves, x0: x, x1: x + w, z0: zf - depth - 0.35, z1: zf + 0.35 },
+        { y: ridge, x0: x, x1: x + w, z0: zf - depth / 2, z1: zf - depth / 2 },
+      ], { def: tiles, xMin: brick, xMax: brick }, false);
+      const n = w > 7.5 ? 3 : 2;
+      for (let i = 0; i < n; i++) {
+        const wx = x + ((i + 0.5) / n) * w;
+        const ground0 = i === 0;
+        if (ground0) {
+          b.add(M.greenDoor, boxGeo(wx - 0.5, 0, zf, wx + 0.5, 2.3, zf + 0.06, false));
+        } else {
+          windowOn(b, M, frameAt(wx, 0.9, zf, F.zMax), { w: 1.6, h: 1.8, kind: 'seg', lit: r() < 0.3 });
+        }
+        windowOn(b, M, frameAt(wx, eaves - 2.7, zf, F.zMax), { w: 1.6, h: 1.7, kind: 'seg', lit: r() < 0.25 });
+      }
+      b.add(M.hedge, boxGeo(x + 0.2, 0, zf + 1.6, x + w - 0.2, 0.9, zf + 2.2));
+      solid(x, zf - depth, x + w, zf + 2.2);
+      x += w + (r() < 0.15 ? between(1.2, 3) : 0);
+    }
+  }
+
+  // ---- de buurt eromheen: straten met rijtjeshuizen en boomgroepen ---------------
+  // Indicatief; dient alleen om het klooster niet in een leeg veld te zetten.
+  {
+    const CELL = 44, leafBlobs = [];
+    for (let cx = -264; cx < 264; cx += CELL) {
+      for (let cz = -264; cz < 264; cz += CELL) {
+        const nearSite = cx + CELL > -86 && cx < 86 && cz + CELL > -44 && cz < 138;
+        const onStreet = cz + CELL > -40 && cz < 0;      // strook van de Bredaseweg
+        if (nearSite || onStreet) continue;
+        b.add(M.asphalt, boxGeo(cx, 0, cz, cx + 6, 0.03, cz + CELL));
+        b.add(M.asphalt, boxGeo(cx + 6, 0, cz, cx + CELL, 0.03, cz + 6));
+        if (r() < 0.16) {
+          // parkje
+          for (let k = 0; k < 6; k++) {
+            const g = new THREE.IcosahedronGeometry(between(3.5, 6), 1);
+            g.scale(1, 0.85, 1).translate(cx + between(10, 40), between(5, 8), cz + between(10, 40));
+            leafBlobs.push(g);
+          }
+          continue;
+        }
+        for (const [z0, z1] of [[cz + 8, cz + 17], [cz + 33, cz + 42]]) {
+          let x = cx + 8;
+          const eaves = between(5.8, 8.5);
+          const brick = M.houseBricks[(r() * M.houseBricks.length) | 0];
+          const tiles = r() < 0.55 ? M.tilesDark : M.tilesRed;
+          while (x < cx + CELL - 4) {
+            const w = Math.min(between(5.5, 8), cx + CELL - 2 - x);
+            const e = eaves + between(-0.3, 0.3);
+            b.add(brick, boxGeo(x, 0, z0, x + w, e, z1));
+            ringRoof(b, [
+              { y: e, x0: x, x1: x + w, z0: z0 - 0.3, z1: z1 + 0.3 },
+              { y: e + 3.2, x0: x, x1: x + w, z0: (z0 + z1) / 2, z1: (z0 + z1) / 2 },
+            ], { def: tiles, xMin: brick, xMax: brick }, false);
+            x += w;
+          }
+        }
+        for (let k = 0; k < 3; k++) {
+          const g = new THREE.IcosahedronGeometry(between(2.5, 4.2), 1);
+          g.translate(cx + between(10, 40), between(5, 7), cz + between(20, 30));
+          leafBlobs.push(g);
+        }
+      }
+    }
+    const buurtLeaf = new THREE.MeshStandardMaterial({ color: '#4f6c2f', roughness: 1, flatShading: true });
+    const blobs = new THREE.Mesh(mergeGeometries(leafBlobs, false), buurtLeaf);
+    blobs.receiveShadow = true;
+    group.add(blobs);
+  }
+
+  // ---- voorplein, hekwerk en poortpijlers ------------------------------------------
+  b.add(M.klinker, boxGeo(S.x0, 0, S.z0, S.x1, 0.03, 0.5));
+  const fz = S.z0;
+  // gemetselde muur aan de westkant
+  b.add(M.brickWall, boxGeo(S.x0, 0, fz - 0.2, -46, 2.2, fz + 0.2));
+  b.add(M.brickDark, boxGeo(S.x0 - 0.05, 2.2, fz - 0.28, -46, 2.42, fz + 0.28));
+  solid(S.x0, fz - 0.3, -46, fz + 0.3);
+  const pillars = [-46, -40, -34, -28, -22, -16, -10.5, -4.6, 4.6, 10.5, 16, 22, 26.6, 34.4, 40, 46, 52, 58, 64, S.x1];
+  const gates = [[-4.6, 4.6], [26.6, 34.4]];
+  const isGate = (a, c) => gates.some(([g0, g1]) => g0 === a && g1 === c);
+  for (let i = 0; i < pillars.length; i++) {
+    const px = pillars[i];
+    const big = gates.some(([g0, g1]) => px === g0 || px === g1);
+    const s = big ? 0.42 : 0.3, h = big ? 2.8 : 2.1;
+    b.add(M.brickWall, boxGeo(px - s, 0, fz - s, px + s, h, fz + s));
+    b.add(M.stone, boxGeo(px - s - 0.08, h, fz - s - 0.08, px + s + 0.08, h + 0.15, fz + s + 0.08, false));
+    // de grote poortpijlers dragen een lantaarn in plaats van een piramide
+    if (!big) b.add(M.stone, new THREE.ConeGeometry(s * 1.2, 0.5, 4).rotateY(Math.PI / 4).translate(px, h + 0.4, fz));
+    solid(px - s, fz - s, px + s, fz + s);
+    if (i === pillars.length - 1) break;
+    const qx = pillars[i + 1];
+    if (isGate(px, qx)) continue;
+    const a = px + s, c = qx - 0.3;
+    b.add(M.brickWall, boxGeo(a, 0, fz - 0.18, c, 0.4, fz + 0.18));
+    b.add(M.iron, boxGeo(a, 0.48, fz - 0.03, c, 0.56, fz + 0.03, false));
+    b.add(M.iron, boxGeo(a, 1.6, fz - 0.03, c, 1.68, fz + 0.03, false));
+    for (let x = a + 0.08; x < c; x += 0.14) {
+      b.add(M.iron, boxGeo(x - 0.015, 0.4, fz - 0.015, x + 0.015, 1.85, fz + 0.015, false));
+      b.add(M.iron, new THREE.ConeGeometry(0.035, 0.14, 4).translate(x, 1.92, fz));
+    }
+    solid(a, fz - 0.25, c, fz + 0.25);
+  }
+  // lantaarns op de poortpijlers en op het voorplein
+  const lantern = (x, y, z, post) => {
+    if (post) b.add(M.iron, new THREE.CylinderGeometry(0.06, 0.09, y, 8).translate(x, y / 2, z));
+    b.add(M.iron, new THREE.CylinderGeometry(0.22, 0.12, 0.12, 6).translate(x, y + 0.06, z));
+    b.add(M.bulb, new THREE.CylinderGeometry(0.2, 0.15, 0.5, 6).translate(x, y + 0.37, z));
+    b.add(M.iron, new THREE.ConeGeometry(0.3, 0.3, 6).translate(x, y + 0.77, z));
+    const l = new THREE.PointLight(0xffd29a, 0, 18, 1.8);
+    l.position.set(x, y + 0.4, z);
+    group.add(l);
+    lights.push(l);
+  };
+  lantern(-4.6, 2.95, fz, false);
+  lantern(4.6, 2.95, fz, false);
+  lantern(-17, 3.1, -2.4, true);
+  lantern(17, 3.1, -2.4, true);
+  solid(-17.2, -2.6, -16.8, -2.2);
+  solid(16.8, -2.6, 17.2, -2.2);
+  // hagen voor de gevel
+  for (const [a, c] of [[-38, -7], [7, 24], [36, 46]]) {
+    b.add(M.hedge, boxGeo(a, 0, -4.4, c, 1.3, -3.6));
+    solid(a, -4.4, c, -3.6);
+  }
+
+  // ---- terreinmuren --------------------------------------------------------------------
+  const wallRun = (x0, z0, x1, z1) => {
+    b.add(M.brickWall, boxGeo(x0, 0, z0, x1, 2.6, z1));
+    b.add(M.brickDark, boxGeo(x0 - 0.08, 2.6, z0 - 0.08, x1 + 0.08, 2.8, z1 + 0.08));
+    solid(x0, z0, x1, z1);
+    rectPrint(x0, z0, x1, z1, 'rgba(160,110,90,.7)');
+  };
+  wallRun(S.x0 - 0.2, S.z0, S.x0 + 0.2, S.z1);
+  wallRun(S.x1 - 0.2, S.z0, S.x1 + 0.2, S.z1);
+  wallRun(S.x0, S.z1 - 0.2, S.x1, S.z1 + 0.2);
+
+  // ---- paden -----------------------------------------------------------------------------
+  const path = (x0, z0, x1, z1) => b.add(M.gravel, boxGeo(x0, 0, z0, x1, 0.025, z1));
+  path(-26, 13, 25, 30);
+  path(-1.5, 30, 1.5, 108);
+  path(-44, 69, 48, 72);
+  path(45.5, 72, 48.5, 108);
+  path(-50, 20, -47, 69);     // langs de westkant van de kapel
+  path(-17, 30, -14, 69);     // langs de oostkant, buiten de transeptarm
+  path(-66, 69, -44, 72);
+  path(-66, 72, -63, 82);
+
+  // Heilig-Hartbeeld op de tuinas
+  {
+    const x = 0, z = 36;
+    b.add(M.stone, boxGeo(x - 0.9, 0, z - 0.9, x + 0.9, 0.4, z + 0.9));
+    b.add(M.stone, boxGeo(x - 0.55, 0.4, z - 0.55, x + 0.55, 2.3, z + 0.55));
+    b.add(M.stone, boxGeo(x - 0.7, 2.3, z - 0.7, x + 0.7, 2.5, z + 0.7));
+    b.add(M.whiteStone, new THREE.CapsuleGeometry(0.34, 1.4, 4, 14).translate(x, 3.45, z));
+    b.add(M.whiteStone, new THREE.SphereGeometry(0.22, 14, 10).translate(x, 4.55, z));
+    b.add(M.taillight, new THREE.SphereGeometry(0.11, 10, 8).translate(x, 3.75, z - 0.3));
+    b.add(M.gold, new THREE.TorusGeometry(0.3, 0.025, 6, 24).translate(x, 4.62, z + 0.05));
+    solid(x - 0.9, z - 0.9, x + 0.9, z + 0.9);
+    for (const sx of [-1, 1]) {
+      b.add(M.hedge, boxGeo(x + sx * 1.6 - 0.5, 0, z - 3, x + sx * 1.6 + 0.5, 0.6, z + 3));
+    }
+  }
+
+  // ---- kerkhof --------------------------------------------------------------------------
+  {
+    const c = P.CEMETERY, th = 0.7, h = 1.4;
+    const mid = (c.x0 + c.x1) / 2;
+    const hedge = (x0, z0, x1, z1) => { b.add(M.hedge, boxGeo(x0, 0, z0, x1, h, z1)); solid(x0, z0, x1, z1); };
+    hedge(c.x0, c.z0, mid - 1.5, c.z0 + th);
+    hedge(mid + 1.5, c.z0, c.x1, c.z0 + th);
+    hedge(c.x0, c.z1 - th, c.x1, c.z1);
+    hedge(c.x0, c.z0, c.x0 + th, c.z1);
+    hedge(c.x1 - th, c.z0, c.x1, c.z1);
+    rectPrint(c.x0, c.z0, c.x1, c.z1, 'rgba(90,120,80,.55)');
+    for (let z = c.z0 + 3.5; z < c.z1 - 4; z += 2.6) {
+      for (let x = c.x0 + 2.5; x < c.x1 - 1.5; x += 2.0) {
+        if (Math.abs(x - mid) < 2) continue;
+        b.add(M.whiteStone, boxGeo(x - 0.05, 0, z - 0.04, x + 0.05, 0.95, z + 0.04, false));
+        b.add(M.whiteStone, boxGeo(x - 0.27, 0.62, z - 0.04, x + 0.27, 0.72, z + 0.04, false));
+        b.add(M.hedge, boxGeo(x - 0.4, 0, z + 0.1, x + 0.4, 0.12, z + 1.7));
+      }
+    }
+    const kz = c.z1 - 2.6;
+    b.add(M.stone, boxGeo(mid - 1, 0, kz - 1, mid + 1, 0.7, kz + 1));
+    b.add(M.oak, boxGeo(mid - 0.12, 0.7, kz - 0.12, mid + 0.12, 5.2, kz + 0.12));
+    b.add(M.oak, boxGeo(mid - 1.1, 3.9, kz - 0.12, mid + 1.1, 4.15, kz + 0.12));
+    b.add(M.whiteStone, new THREE.CapsuleGeometry(0.13, 0.9, 4, 10).translate(mid, 3.5, kz - 0.22));
+    solid(mid - 1, kz - 1, mid + 1, kz + 1);
+    path(mid - 1.5, c.z0, mid + 1.5, kz - 1);
+  }
+
+  // ---- stallen ------------------------------------------------------------------------------
+  {
+    const s = P.STABLES, h = 4.2;
+    b.add(M.brickWall, boxGeo(s.x0, 0, s.z0, s.x1, h, s.z1));
+    gableRoof(b, M.slate, s.x0 - 0.3, s.x1 + 0.3, s.z0 - 0.45, s.z1 + 0.45, h, 8.2, 'x');
+    // topgevels
+    const zm = (s.z0 + s.z1) / 2;
+    for (const xg of [s.x0, s.x1]) {
+      const V = (y, z) => new THREE.Vector3(xg, y, z);
+      b.add(M.brickWall, quadGeo(V(h, s.z0), V(h, s.z1), V(8.0, zm), V(8.0, zm)));
+    }
+    for (let i = 0; i < 3; i++) {
+      const x = s.x0 + 2.8 + i * 5.2;
+      b.add(M.greenDoor, boxGeo(x - 1.1, 0, s.z0 - 0.08, x + 1.1, 2.9, s.z0, false));
+      b.add(M.paintYellow, boxGeo(x - 1.2, 2.9, s.z0 - 0.1, x + 1.2, 3.05, s.z0, false));
+      windowOn(b, M, frameAt(x + 2.4, 1.6, s.z0, F.zMin), { w: 0.8, h: 1.1, kind: 'seg', mull: false });
+    }
+    solid(s.x0, s.z0, s.x1, s.z1);
+    rectPrint(s.x0, s.z0, s.x1, s.z1);
+  }
+
+  // ---- nieuwbouw (2015) ---------------------------------------------------------------------
+  for (const nb of P.NEWBUILD) {
+    b.add(M.modern, boxGeo(nb.x0, 0, nb.z0, nb.x1, nb.h, nb.z1));
+    b.add(M.zinc, boxGeo(nb.x0 - 0.1, nb.h, nb.z0 - 0.1, nb.x1 + 0.1, nb.h + 0.3, nb.z1 + 0.1, false));
+    solid(nb.x0, nb.z0, nb.x1, nb.z1);
+    rectPrint(nb.x0, nb.z0, nb.x1, nb.z1, 'rgba(150,150,150,.45)');
+  }
+
+  // ---- bomen ----------------------------------------------------------------------------------
+  const bark = new THREE.MeshStandardMaterial({ color: '#4a3f36', roughness: 1 });
+  const leaf = {
+    beech: new THREE.MeshStandardMaterial({ color: '#56722f', roughness: 0.95, flatShading: true }),
+    copper: new THREE.MeshStandardMaterial({ color: '#5a2b2e', roughness: 0.9, flatShading: true }),
+    linden: new THREE.MeshStandardMaterial({ color: '#5f7d35', roughness: 0.95, flatShading: true }),
+    fruit: new THREE.MeshStandardMaterial({ color: '#6b8a3b', roughness: 0.95, flatShading: true }),
+    thuja: new THREE.MeshStandardMaterial({ color: '#2d4826', roughness: 1, flatShading: true }),
+    chestnut: new THREE.MeshStandardMaterial({ color: '#4b6a2a', roughness: 0.95, flatShading: true }),
+  };
+  const spec = {
+    beech: { trunk: 4.2, R: 7, n: 9, sy: 0.8, tr: 0.45 },
+    copper: { trunk: 3.6, R: 6.5, n: 9, sy: 0.82, tr: 0.42 },
+    linden: { trunk: 3.6, R: 3.6, n: 6, sy: 1.25, tr: 0.25 },
+    chestnut: { trunk: 3.2, R: 5, n: 7, sy: 0.9, tr: 0.35 },
+    fruit: { trunk: 1.4, R: 1.8, n: 4, sy: 0.85, tr: 0.12 },
+  };
+  function tree(x, z, kind, s = 1) {
+    const root = new THREE.Group();
+    root.position.set(x, 0, z);
+    root.rotation.y = r() * Math.PI * 2;
+    const crown = new THREE.Group();
+    let mesh;
+    if (kind === 'thuja') {
+      const h = between(4, 6) * s;
+      root.add(Object.assign(new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.12, 0.6, 6).translate(0, 0.3, 0), bark), { castShadow: true }));
+      crown.position.y = 0.4;
+      mesh = new THREE.Mesh(new THREE.ConeGeometry(0.9 * s, h, 8).translate(0, h / 2, 0), leaf.thuja);
+    } else {
+      const p = spec[kind];
+      const th = p.trunk * s, R = p.R * s;
+      const tg = new THREE.CylinderGeometry(p.tr * 0.65 * s, p.tr * s, th + R * 0.5, 8).translate(0, (th + R * 0.5) / 2, 0);
+      const parts = [tg];
+      for (let k = 0; k < 3; k++) {
+        const a = (k / 3) * Math.PI * 2 + r();
+        const br = new THREE.CylinderGeometry(p.tr * 0.25 * s, p.tr * 0.4 * s, R * 0.8, 6);
+        br.translate(0, R * 0.4, 0).rotateZ(0.7).rotateY(a).translate(0, th * 0.9, 0);
+        parts.push(br);
+      }
+      const trunk = new THREE.Mesh(mergeGeometries(parts.map((g) => g.toNonIndexed()), false), bark);
+      trunk.castShadow = true;
+      root.add(trunk);
+      crown.position.y = th;
+      const blobs = [];
+      for (let k = 0; k < p.n; k++) {
+        const a = r() * Math.PI * 2, d = r() * R * 0.5;
+        const rr = R * between(0.45, 0.7);
+        const g = new THREE.IcosahedronGeometry(rr, 1);
+        g.scale(1, p.sy, 1);
+        g.translate(Math.cos(a) * d, R * p.sy * 0.75 + between(-0.25, 0.3) * R * p.sy, Math.sin(a) * d);
+        blobs.push(g);
+      }
+      mesh = new THREE.Mesh(mergeGeometries(blobs, false), leaf[kind]);
+    }
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    crown.add(mesh);
+    root.add(crown);
+    group.add(root);
+    crowns.push({ obj: crown, ph: r() * Math.PI * 2, amp: kind === 'thuja' ? 0.006 : 0.012 });
+    const tr = kind === 'thuja' ? 0.6 : 0.45 * s;
+    solid(x - tr, z - tr, x + tr, z + tr);
+  }
+
+  tree(-9, 47, 'beech', 1.15);
+  tree(10, 57, 'copper', 1.1);
+  tree(-5, 82, 'beech', 1.0);
+  for (let z = 66; z <= 116; z += 8) tree(-67.5, z, 'linden', between(0.9, 1.1));
+  for (let x = -26; x <= 22; x += 8) tree(x, 103.5, 'linden', between(0.9, 1.05));
+  for (let i = 0; i < 4; i++) for (let k = 0; k < 4; k++) {
+    tree(12 + i * 6 + between(-0.6, 0.6), 78 + k * 5.5 + between(-0.6, 0.6), 'fruit', between(0.85, 1.15));
+  }
+  tree(-56, 74, 'chestnut', 1.1);
+  tree(-46, 96, 'chestnut', 1.0);
+  tree(-60, 6, 'chestnut', 1.15);
+  tree(62, 8, 'chestnut', 1.05);
+  tree(-52, 40, 'linden', 1.1);
+  tree(30, 52, 'linden', 1.0);
+  for (let x = P.CEMETERY.x0 + 1.5; x < P.CEMETERY.x1 - 1; x += 3) tree(x, P.CEMETERY.z1 + 1.6, 'thuja', between(0.9, 1.1));
+  for (let x = -150; x <= 150; x += 13) {
+    if (Math.abs(x) < 8) continue;
+    tree(x + between(-1, 1), st.walkN[0] + 1.6, 'linden', between(0.85, 1.05));
+  }
+
+  // tuinbanken onder de beuken
+  for (const [x, z, a] of [[-2.5, 47, 0], [4, 57, Math.PI], [-5, 72, Math.PI / 2]]) {
+    const m = new THREE.Matrix4().makeRotationY(a).setPosition(x, 0, z);
+    b.add(M.oak, boxGeo(-0.9, 0.42, -0.22, 0.9, 0.47, 0.22, false).applyMatrix4(m));
+    b.add(M.oak, boxGeo(-0.9, 0.5, 0.18, 0.9, 0.9, 0.24, false).applyMatrix4(m));
+    for (const sx of [-0.8, 0.8]) b.add(M.iron, boxGeo(sx - 0.03, 0, -0.2, sx + 0.03, 0.42, 0.2, false).applyMatrix4(m));
+  }
+
+  b.flush(group);
+  return { group, crowns, lights };
+}
+
+// ===== route.js ====================================================
+// Het parcours van Rooi Harten Kart, in de coördinaten van plan.js uit het
+// kloostermodel: x langs de Bredaseweg (+x = oost), y omhoog, z het terrein
+// in (+z = zuid). De gevellijn van de vleugels ligt op z = 0, het midden van
+// de middenrisaliet op x = 0.
+//
+// Pure data en rekenwerk, zonder Three.js.
+//
+// Elk punt: [x, y, z, halve baanbreedte, opties]. De opties gelden voor het
+// stuk naar het volgende punt:
+//   in    binnen: harde wanden op de baanrand, geen botsing met de buitenwereld
+//   jump  het rijvlak valt weg tot de hoogte van het volgende punt (sprong)
+//   zone  naam van het gebied, voor de HUD
+//   pad   boostpad, zoveel meter na dit punt
+//   items rij itemblokken, zoveel meter na dit punt
+// Buiten ligt het rijvlak op G (net boven stoep en klinkers).
+
+const G = 0.13;
+// vloerhoogtes: hal, eerste verdieping, bordes oosttrap, bordes zoldertrap, zolder
+const LV = { F0: 0.25, F1: 6.3, FL: 3.3, FW: 9.0, F2: 11.7 };
+
+const ROUTE = (({ F0, F1, FL, FW, F2 }) => [
+  // ---- Bredaseweg, rijrichting west; start en finish voor de hoofdingang
+  [0, G, -13, 4.5, { zone: 'Bredaseweg' }],
+  [-12, G, -13, 4.5, { pad: 0 }],
+  [-24, G, -13, 4.5],
+  [-34, G, -13, 4.4],
+  [-40.95, G, -10.95, 3.8],
+  // ---- door een zijpoortje in het hek naar de westkant van het klooster
+  [-43, G, -6, 3.0, { zone: 'Zijpoort' }],
+  [-43, G, -3, 2.6, { zone: 'Westhoek' }],
+  [-43, G, 3, 2.8],
+  [-43, G, 6.6, 2.6],
+  [-42.12, G, 8.72, 1.8],
+  // ---- zijdeur in het westelijke hoekblok, de gang onder de westvleugel door
+  [-40.6, F0, 9.6, 1.15, { in: true }],
+  [-38.6, F0, 9.6, 1.15, { in: true, zone: 'Zijgang' }],
+  [-36, F0, 9.6, 1.6, { in: true }],
+  [-30, F0, 9.6, 1.6, { in: true, items: 0 }],
+  [-18, F0, 9.6, 1.6, { in: true }],
+  [-6, F0, 9.6, 1.6, { in: true }],
+  [-3, F0, 9.6, 2.0, { in: true, zone: 'Ontvangsthal' }],
+  [0, F0, 9.6, 2.4, { in: true }],
+  [3.6, F0, 9.6, 2.4, { in: true, zone: 'Grote trap' }],
+  // ---- bordestrap in de oostvleugel: achterlangs omhoog, keren, voorlangs omhoog
+  [5, F0, 9.6, 2.4, { in: true }],
+  [17, FL, 9.6, 2.4, { in: true }],
+  [19.19, FL, 8.69, 2.4, { in: true }],
+  [20.1, FL, 6.5, 2.4, { in: true }],
+  [19.19, FL, 4.31, 2.4, { in: true }],
+  [17, FL, 3.4, 2.4, { in: true }],
+  [5, F1, 3.4, 2.4, { in: true }],
+  // ---- hal op de eerste verdieping, in de toren
+  [3, F1, 3.4, 2.4, { in: true, zone: 'Hal 1e verdieping' }],
+  [0, F1, 3.4, 2.6, { in: true }],
+  [-3, F1, 3.4, 2.4, { in: true, zone: 'Zoldertrap' }],
+  // ---- trap naar de zolder in de westvleugel
+  [-5, F1, 3.4, 2.4, { in: true }],
+  [-17, FW, 3.4, 2.4, { in: true }],
+  [-19.19, FW, 4.31, 2.4, { in: true }],
+  [-20.1, FW, 6.5, 2.4, { in: true }],
+  [-19.19, FW, 8.69, 2.4, { in: true }],
+  [-17, FW, 9.6, 2.4, { in: true }],
+  [-5, F2, 9.6, 2.4, { in: true }],
+  // ---- zolder: door de toren naar de oostvleugel
+  [-3, F2, 9.6, 2.4, { in: true, zone: 'Zolder' }],
+  [0, F2, 9.6, 2.5, { in: true }],
+  [4, F2, 9.3, 2.5, { in: true }],
+  [8.5, F2, 7.2, 2.5, { in: true }],
+  // ---- de zolderkamer en door de dakkapel naar buiten
+  [12.5, F2, 6.6, 2.2, { in: true, zone: 'Zolderkamer' }],
+  [15.0, F2, 7.2, 2.0, { in: true, pad: 0.5 }],
+  [17.4, F2, 9.0, 1.6, { in: true }],
+  [18.4, F2, 10.8, 1.1, { in: true }],
+  [18.4, F2, 12.0, 1.0, { in: true }],
+  [18.4, F2, 13.4, 1.0, { jump: true, zone: 'Sprong!' }],
+  // ---- binnenplaats en kloostertuin
+  [18.4, G, 24, 4.0, { zone: 'Binnenplaats' }],
+  [18.4, G, 38, 4.5],
+  [18.0, G, 52, 4.5, { zone: 'Kloostertuin', items: 0 }],
+  [15.5, G, 64, 4.0],
+  [9, G, 70.5, 3.6],
+  [-10, G, 70.5, 3.6, { pad: 4 }],
+  [-30, G, 70.5, 3.6],
+  [-37.5, G, 72.5, 3.6],
+  [-40.5, G, 78, 3.6],
+  [-40.5, G, 91, 3.6],
+  [-37.5, G, 97.2, 3.4],
+  [-30, G, 98.8, 3.0],
+  [0, G, 98.8, 3.0, { items: 0 }],
+  [26, G, 98.8, 3.0],
+  [32.7, G, 97.7, 2.4],
+  [33.5, G, 91, 2.3],
+  [33.3, G, 80, 2.6],
+  [35.5, G, 70.5, 3.2],
+  // ---- noordwaarts tussen klooster en nieuwbouw, door de oostpoort terug
+  [41, G, 62, 3.5, { zone: 'Langs de nieuwbouw', items: 3 }],
+  [43.6, G, 52, 3.5],
+  [43.6, G, 30, 3.5, { pad: 0 }],
+  [43.6, G, 8, 3.0],
+  [43.6, G, 0.1, 2.2],
+  [42.72, G, -2.02, 1.9, { zone: 'Voorplein' }],
+  [40.6, G, -2.9, 1.9],
+  [33.4, G, -2.9, 1.9],
+  [31.5, G, -3.7, 1.9, { zone: 'Oostpoort' }],
+  [30.8, G, -5.5, 2.6],
+  [30.8, G, -7.5, 3.5],
+  [29.4, G, -11.4, 4.2, { zone: 'Bredaseweg' }],
+  [25, G, -13, 4.5],
+  [12, G, -13, 4.5],
+])(LV);
+
+/** Index van het eerste punt met deze zone (om pads en items te plaatsen). */
+function routeIndex(zone) {
+  return ROUTE.findIndex((p) => p[4]?.zone === zone);
+}
+
+// Centripetale Catmull-Rom (alpha = 0.5) door de punten, gesloten, in het
+// xz-vlak. Geen lussen of uitschieters bij ongelijke puntafstanden.
+function crPoint(P0, P1, P2, P3, u) {
+  const d = (a, b) => Math.max(1e-4, Math.sqrt(Math.hypot(b[0] - a[0], b[1] - a[1])));
+  const t0 = 0, t1 = t0 + d(P0, P1), t2 = t1 + d(P1, P2), t3 = t2 + d(P2, P3);
+  const t = t1 + (t2 - t1) * u;
+  const lerp = (A, B, ta, tb) => {
+    const wa = (tb - t) / (tb - ta), wb = (t - ta) / (tb - ta);
+    return [A[0] * wa + B[0] * wb, A[1] * wa + B[1] * wb];
+  };
+  const A1 = lerp(P0, P1, t0, t1), A2 = lerp(P1, P2, t1, t2), A3 = lerp(P2, P3, t2, t3);
+  const B1 = lerp(A1, A2, t0, t2), B2 = lerp(A2, A3, t1, t3);
+  return lerp(B1, B2, t1, t2);
+}
+
+/**
+ * Bemonstert de baan op vaste afstand (step meter). Geeft per monster
+ * positie, vloerhoogte, halve breedte, richting, binnen/buiten, sprong en zone.
+ */
+function sampleRoute(step = 0.5) {
+  const W = ROUTE, n = W.length;
+  const xz = (i) => [W[(i + n) % n][0], W[(i + n) % n][2]];
+
+  // fijn langs elk segment, met booglengte per segment
+  const SUB = 48;
+  const dense = [];
+  for (let i = 0; i < n; i++) {
+    const P0 = xz(i - 1), P1 = xz(i), P2 = xz(i + 1), P3 = xz(i + 2);
+    const pts = [];
+    for (let k = 0; k < SUB; k++) pts.push(crPoint(P0, P1, P2, P3, k / SUB));
+    pts.push(P2);
+    let L = 0;
+    const acc = [0];
+    for (let k = 1; k < pts.length; k++) { L += Math.hypot(pts[k][0] - pts[k - 1][0], pts[k][1] - pts[k - 1][1]); acc.push(L); }
+    for (let k = 0; k < SUB; k++) dense.push({ x: pts[k][0], z: pts[k][1], seg: i, f: acc[k] / L, segLen: L });
+  }
+  // cumulatieve afstand
+  let total = 0;
+  dense[0].s = 0;
+  for (let k = 1; k <= dense.length; k++) {
+    const a = dense[k - 1], b = dense[k % dense.length];
+    total += Math.hypot(b.x - a.x, b.z - a.z);
+    if (k < dense.length) b.s = total;
+  }
+
+  const N = Math.round(total / step);
+  const S = {
+    N, total, step,
+    x: new Float32Array(N), z: new Float32Array(N), y: new Float32Array(N), floor: new Float32Array(N),
+    hw: new Float32Array(N), tx: new Float32Array(N), tz: new Float32Array(N),
+    indoor: new Uint8Array(N), jump: new Uint8Array(N), seg: new Uint16Array(N), zone: new Array(N),
+  };
+  // zone per segment, doorgeschoven
+  const zones = [];
+  let zone = W[0][4]?.zone ?? '';
+  for (let i = 0; i < n; i++) { if (W[i][4]?.zone) zone = W[i][4].zone; zones.push(zone); }
+
+  let k = 0;
+  for (let j = 0; j < N; j++) {
+    const s = (j * total) / N;
+    while (k + 1 < dense.length && dense[k + 1].s <= s) k++;
+    const a = dense[k], b = dense[(k + 1) % dense.length];
+    const sb = k + 1 < dense.length ? b.s : total;
+    const u = sb > a.s ? (s - a.s) / (sb - a.s) : 0;
+    S.x[j] = a.x + (b.x - a.x) * u;
+    S.z[j] = a.z + (b.z - a.z) * u;
+    const i = a.seg, i2 = (i + 1) % n;
+    const f = a.seg === b.seg ? a.f + (b.f - a.f) * u : a.f + (1 - a.f) * u;
+    const o = W[i][4] ?? {};
+    const y = W[i][1] + (W[i2][1] - W[i][1]) * f;
+    S.y[j] = o.jump ? W[i][1] + (W[i2][1] - W[i][1]) * f : y;
+    S.floor[j] = o.jump ? W[i2][1] : y;
+    S.hw[j] = W[i][3] + (W[i2][3] - W[i][3]) * f;
+    S.indoor[j] = o.in ? 1 : 0;
+    S.jump[j] = o.jump ? 1 : 0;
+    S.seg[j] = i;
+    S.zone[j] = zones[i];
+  }
+  for (let j = 0; j < N; j++) {
+    const a = (j - 1 + N) % N, b = (j + 1) % N;
+    const dx = S.x[b] - S.x[a], dz = S.z[b] - S.z[a];
+    const L = Math.hypot(dx, dz) || 1;
+    S.tx[j] = dx / L;
+    S.tz[j] = dz / L;
+  }
+  return S;
+}
+
+// ===== cut.js ======================================================
+// Gaten in het kloostermodel. Het hoofdgebouw is in het model massief (een
+// doos per bouwdeel, ramen als opleg), dus waar de baan naar binnen gaat
+// snijden we de schil weg: elk fragment dat binnen een van de dozen valt
+// wordt niet getekend. De meshes krijgen daarvoor een eigen kopie van hun
+// materiaal; de kapel en het binnenwerk, die dezelfde materialen delen,
+// blijven heel.
+
+/** box: { min: [x, y, z], max: [x, y, z] } in wereldcoördinaten. */
+function cutOut(group, boxes) {
+  const n = boxes.length;
+  const mins = boxes.map((b) => new THREE.Vector3(...b.min));
+  const maxs = boxes.map((b) => new THREE.Vector3(...b.max));
+  const key = 'cut' + boxes.map((b) => b.min.join(',') + b.max.join(',')).join('|');
+
+  const patch = (mat) => {
+    mat.onBeforeCompile = (sh) => {
+      sh.uniforms.cutMin = { value: mins };
+      sh.uniforms.cutMax = { value: maxs };
+      sh.vertexShader = sh.vertexShader
+        .replace('#include <common>', '#include <common>\nvarying vec3 vCutPos;')
+        .replace('#include <project_vertex>', '#include <project_vertex>\nvCutPos = (modelMatrix * vec4(transformed, 1.0)).xyz;');
+      sh.fragmentShader = sh.fragmentShader
+        .replace('#include <common>', `#include <common>\nvarying vec3 vCutPos;\nuniform vec3 cutMin[${n}];\nuniform vec3 cutMax[${n}];`)
+        .replace('#include <clipping_planes_fragment>', `
+          for (int i = 0; i < ${n}; i++) {
+            if (all(greaterThan(vCutPos, cutMin[i])) && all(lessThan(vCutPos, cutMax[i]))) discard;
+          }
+          #include <clipping_planes_fragment>`);
+    };
+    mat.customProgramCacheKey = () => key;
+    return mat;
+  };
+
+  const clones = new Map();
+  group.traverse((o) => {
+    if (!o.isMesh) return;
+    if (!clones.has(o.material)) clones.set(o.material, patch(o.material.clone()));
+    o.material = clones.get(o.material);
+    // ook de schaduw volgt het gat, anders valt er geen licht door de deur
+    if (!o.material.transparent && !o.material.alphaTest) {
+      o.customDepthMaterial = patch(new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking }));
+    }
+  });
+}
+
+/**
+ * Haalt de uitsparingen uit de botsingsboxen (alleen in het grondvlak): een
+ * box die een uitsparing raakt wordt vervangen door de stukken eromheen.
+ */
+function subtractColliders(colliders, boxes) {
+  let list = colliders;
+  for (const b of boxes) {
+    const [x0, y0, z0] = b.min, [x1, y1, z1] = b.max;
+    const out = [];
+    for (const c of list) {
+      const hit = c.x0 < x1 && c.x1 > x0 && c.z0 < z1 && c.z1 > z0 && c.y0 < y1 && c.y1 > y0;
+      if (!hit) { out.push(c); continue; }
+      const piece = (a, b2, c2, d) => { if (b2 - a > 0.02 && d - c2 > 0.02) out.push({ ...c, x0: a, x1: b2, z0: c2, z1: d }); };
+      piece(c.x0, x0, c.z0, c.z1);                                  // links
+      piece(x1, c.x1, c.z0, c.z1);                                  // rechts
+      piece(Math.max(c.x0, x0), Math.min(c.x1, x1), c.z0, z0);      // ervoor
+      piece(Math.max(c.x0, x0), Math.min(c.x1, x1), z1, c.z1);      // erachter
+    }
+    list = out;
+  }
+  return list;
+}
+
+// ===== interior.js =================================================
+// Het binnenwerk langs de baan. Het kloostermodel heeft geen interieur (het
+// hoofdgebouw is massief), dus hier staat een eigen, vereenvoudigde indeling
+// binnen de muren van het model:
+//
+//   begane grond  zijdeur in het westelijke hoekblok, een gang onder de
+//                 westvleugel door, ontvangsthal in de middenrisaliet,
+//                 bordestrap in de oostvleugel
+//   1e verdieping hal in de middenrisaliet, zoldertrap in de westvleugel
+//   zolder        door de toren naar de oostvleugel, de zolderkamer met de
+//                 grote dakkapel aan de tuinzijde
+//
+// Maten uit plan.js (vleugels, toren, gootlijst). De binnenwanden staan iets
+// binnen de gevels; wat het model binnen die wanden heeft, wordt weggesneden
+// (zie INSIDE_CUTS en cut.js).
+
+const { F0, F1, FL, FW, F2 } = LV;
+const CEIL = 15.2;
+const EAV = P.K.eaves;                         // 11.45: boven de goot springt de wand in
+const XO = 23;                                 // binnenkant kopse wanden vleugels
+const XT = 3;                                  // binnenkant toren
+const ZF = 0.4, ZB = 12.6;                     // voor- en achterwand vleugels
+const ZFu = 1.1, ZBu = 11.9;                   // idem op zolder, binnen het mansardedak
+const ZT = -1.0;                               // voorwand toren
+const DORMER_X = 3.4 + 20 * (4 + 0.5) / 6;     // grote dakkapel i = 4 van de oostvleugel (18,4)
+// zijgang: van een zijdeur in de westgevel van het westelijke hoekblok onder
+// de westvleugel door naar de ontvangsthal
+const GX0 = -39.0, GZ0 = 7.8, GZ1 = 11.4, GH = 4.2;
+const PAV_X = P.PAVILIONS[0].x0;               // westgevel hoekblok (-39,4)
+const SIDE_Z = P.PAVILIONS[0].z0 + (P.PAVILIONS[0].z1 - P.PAVILIONS[0].z0) * 2.5 / 4;   // venster-as i = 2 (9,6)
+const SIDE_W = 2.25, SIDE_H = 3.6;
+
+/**
+ * Ruimtes binnen de muren: daar mag van het model niets zichtbaar blijven.
+ * De dozen steken 10 cm in de binnenwanden en overlappen elkaar, anders
+ * blijven vlakken precies op de grens staan (zoals de bovenkant van de
+ * muurmassa en de goot, allebei op gootlijsthoogte).
+ */
+const INSIDE_CUTS = [
+  [-XT, F0, ZT, XT, CEIL, ZB],
+  [XT, F0, ZF, XO, EAV, ZB],
+  [XT, EAV, ZFu, XO, CEIL, ZBu],
+  [-XO, F1 - 0.2, ZF, -XT, EAV, ZB],
+  [-XO, EAV, ZFu, -XT, CEIL, ZBu],
+  [GX0, F0, GZ0, -XT, GH, GZ1],
+].map(([x0, y0, z0, x1, y1, z1]) => ({ min: [x0 - 0.1, y0 - 0.1, z0 - 0.1], max: [x1 + 0.1, y1 + 0.1, z1 + 0.1] }));
+/** Doorgangen door de schil: de zijdeur (het onderste venster wordt een deur) en de dakkapel. */
+const OPENING_CUTS = [
+  { min: [PAV_X - 0.3, 0.2, SIDE_Z - SIDE_W / 2], max: [GX0 + 0.05, SIDE_H, SIDE_Z + SIDE_W / 2] },
+  { min: [DORMER_X - 0.98, F2 - 0.15, ZBu - 0.1], max: [DORMER_X + 0.98, 13.75, 13.75] },
+];
+
+function buildInterior(M) {
+  const group = new THREE.Group();
+  const b = new Batch();
+  const box = (mat, x0, y0, z0, x1, y1, z1, wuv = true) => b.add(mat, boxGeo(x0, y0, z0, x1, y1, z1, wuv));
+  const V = (x, y, z) => new THREE.Vector3(x, y, z);
+
+  const wall = M.plaster;
+  const loper = new THREE.MeshStandardMaterial({ color: '#8c1d24', roughness: 0.9 });
+  const loperEdge = new THREE.MeshStandardMaterial({ color: '#c9a24a', roughness: 0.5, metalness: 0.4 });
+  const pane = new THREE.MeshBasicMaterial({ color: '#e6f2fb', toneMapped: false });
+  const sheet = new THREE.MeshStandardMaterial({ color: '#f1ede4', roughness: 0.95 });
+  const blanket = new THREE.MeshStandardMaterial({ color: '#7d2a2a', roughness: 0.95 });
+
+  // Wand met rechthoekige sparingen. axis 'x': de wand staat dwars op x
+  // (dikte c0..c1 in x, lengte u in z); axis 'z': dwars op z (lengte u in x).
+  function holed(mat, axis, c0, c1, u0, u1, v0, v1, holes) {
+    const us = [u0, u1];
+    for (const h of holes) us.push(Math.min(u1, Math.max(u0, h[0])), Math.min(u1, Math.max(u0, h[1])));
+    const cuts = [...new Set(us)].sort((p, q) => p - q);
+    for (let i = 0; i < cuts.length - 1; i++) {
+      const ua = cuts[i], ub = cuts[i + 1];
+      if (ub - ua < 1e-3) continue;
+      const mid = (ua + ub) / 2;
+      const gaps = holes.filter((h) => h[0] < mid && h[1] > mid).map((h) => [h[2], h[3]]).sort((p, q) => p[0] - q[0]);
+      let v = v0;
+      const emit = (va, vb) => {
+        if (vb - va < 1e-3) return;
+        if (axis === 'x') box(mat, c0, va, ua, c1, vb, ub);
+        else box(mat, ua, va, c0, ub, vb, c1);
+      };
+      for (const [ga, gb] of gaps) { emit(v, Math.max(v, ga)); v = Math.max(v, gb); }
+      emit(v, v1);
+    }
+  }
+
+  // ---- buitenwanden (aan de binnenkant van de gevels) ------------------------
+  box(wall, -XT - 0.2, F0, ZT - 0.2, XT + 0.2, CEIL, ZT);
+  box(wall, XT, F0, ZT - 0.2, XT + 0.2, CEIL, ZF);
+  box(wall, -XT - 0.2, F0, ZT - 0.2, -XT, CEIL, ZF);
+  box(wall, -XT - 0.2, F0, ZB, XT + 0.2, CEIL, ZB + 0.2);
+  for (const s of [-1, 1]) {
+    const xa = s > 0 ? XT : -XO - 0.2, xb = s > 0 ? XO + 0.2 : -XT;
+    const y0 = s > 0 ? F0 : F1 - 0.2;
+    box(wall, xa, y0, ZF - 0.2, xb, EAV, ZF);                                // voorgevel
+    box(wall, xa, EAV, ZFu - 0.2, xb, CEIL, ZFu);                            // knieschot voor
+    box(wall, xa, EAV, ZF - 0.2, xb, EAV + 0.2, ZFu);                        // richel
+    box(wall, xa, y0, ZB, xb, EAV, ZB + 0.2);                                // achtergevel
+    if (s > 0) holed(wall, 'z', ZBu, ZBu + 0.2, xa, xb, EAV, CEIL, [[DORMER_X - 0.98, DORMER_X + 0.98, F2, 13.75]]);
+    else box(wall, xa, EAV, ZBu, xb, CEIL, ZBu + 0.2);
+    box(wall, xa, EAV, ZBu, xb, EAV + 0.2, ZB + 0.2);
+    const xe = s > 0 ? XO : -XO - 0.2;
+    box(wall, xe, y0, ZF - 0.2, xe + 0.2, CEIL, ZB + 0.2);                  // kopse wand
+    box(wall, xa, CEIL, ZFu - 0.15, xb, CEIL + 0.1, ZBu + 0.15);             // plafond
+  }
+  box(wall, -XT - 0.2, CEIL, ZT - 0.2, XT + 0.2, CEIL + 0.2, ZB + 0.2);
+
+  // ---- vloeren --------------------------------------------------------------
+  box(M.floorTiles, -XT, 0.05, ZT, XT, F0, ZB);
+  box(M.granite, XT, 0.05, ZF, XO, F0, ZB);
+  box(M.oak, -XO, F1 - 0.2, ZF, -XT, F1, ZB);
+  box(M.oak, -XT, F1 - 0.2, ZT, XT, F1, ZB);                                 // eerste verdieping toren
+  box(M.oak, -XT, 11.3, ZT, XT, F2, ZB);                                     // zolder toren
+  box(M.oak, XT, 11.3, ZF, XO, F2, ZB);                                      // zolder oostvleugel
+
+  // ---- scheidingswanden toren / vleugels -------------------------------------
+  holed(wall, 'x', XT - 0.1, XT + 0.1, ZF, ZB, F0, CEIL, [
+    [6.8, 12.4, F0, 4.6], [0.6, 6.0, F1, 10.0], [5.6, ZBu - 0.05, F2, 14.6],
+  ]);
+  holed(wall, 'x', -XT - 0.1, -XT + 0.1, ZF, ZB, F0, CEIL, [
+    [GZ0, GZ1, F0, GH], [0.6, 6.0, F1, 10.0], [7.0, ZBu - 0.05, F2, 14.6],
+  ]);
+
+  // ---- zijgang ----------------------------------------------------------------
+  box(M.floorTiles, GX0, 0.05, GZ0, -XT - 0.1, F0, GZ1);
+  box(wall, GX0 - 0.2, GH, GZ0 - 0.2, -XT - 0.1, GH + 0.2, GZ1 + 0.2);
+  box(wall, GX0 - 0.2, F0, GZ0 - 0.2, -XT - 0.1, GH, GZ0);
+  box(wall, GX0 - 0.2, F0, GZ1, -XT - 0.1, GH, GZ1 + 0.2);
+  holed(wall, 'x', GX0 - 0.2, GX0, GZ0 - 0.2, GZ1 + 0.2, F0, GH + 0.2, [[SIDE_Z - SIDE_W / 2, SIDE_Z + SIDE_W / 2, F0, SIDE_H]]);
+  // dagkanten, latei en dorpel van de zijdeur
+  for (const z of [SIDE_Z - SIDE_W / 2 - 0.18, SIDE_Z + SIDE_W / 2]) box(M.brickDark, PAV_X - 0.2, 0.05, z, GX0, SIDE_H, z + 0.18);
+  box(M.stone, PAV_X - 0.2, SIDE_H, SIDE_Z - SIDE_W / 2 - 0.18, GX0, SIDE_H + 0.2, SIDE_Z + SIDE_W / 2 + 0.18);
+  box(M.granite, PAV_X - 0.2, 0.05, SIDE_Z - SIDE_W / 2, GX0, F0, SIDE_Z + SIDE_W / 2);
+  // lambrisering, loper, gesloten deuren en lampen langs de gang
+  for (const [z0, z1] of [[GZ0, GZ0 + 0.05], [GZ1 - 0.05, GZ1]]) box(M.oak, GX0, F0, z0, -XT - 0.1, F0 + 1.0, z1);
+  box(loper, GX0 + 0.2, F0, SIDE_Z - 0.75, -XT - 0.2, F0 + 0.01, SIDE_Z + 0.75);
+  for (let x = -35; x < -5; x += 7) {
+    for (const [z0, z1] of [[GZ0 + 0.05, GZ0 + 0.1], [GZ1 - 0.1, GZ1 - 0.05]]) {
+      box(M.oakDoor, x - 0.5, F0, z0, x + 0.5, F0 + 2.3, z1);
+      box(M.gold, x + 0.3, F0 + 1.0, Math.min(z0, z1) - 0.03, x + 0.38, F0 + 1.08, Math.max(z0, z1) + 0.03, false);
+    }
+    b.add(M.bulb, boxGeo(x + 3.0, GH - 0.08, SIDE_Z - 0.3, x + 3.6, GH, SIDE_Z + 0.3, false));
+  }
+
+  // ---- trappen ----------------------------------------------------------------
+  // Treden staan onder de schuine lijn van het rijvlak; de loper ligt erop.
+  function stair(xa, xb, z0, z1, ya, yb, base, zc) {
+    const n = Math.max(2, Math.ceil(Math.abs(yb - ya) / 0.17));
+    for (let k = 0; k < n; k++) {
+      const x0 = xa + (xb - xa) * k / n, x1 = xa + (xb - xa) * (k + 1) / n;
+      const top = Math.min(ya + (yb - ya) * k / n, ya + (yb - ya) * (k + 1) / n);
+      if (top - base > 0.01) box(M.marble, Math.min(x0, x1), base, z0, Math.max(x0, x1), top, z1);
+    }
+    b.add(loper, beamGeo(V(xa, ya - 0.02, zc), V(xb, yb - 0.02, zc), 3.0, 0.06));
+    for (const s of [-1, 1]) b.add(loperEdge, beamGeo(V(xa, ya - 0.01, zc + s * 1.55), V(xb, yb - 0.01, zc + s * 1.55), 0.1, 0.06));
+  }
+  // oostvleugel: van de hal naar de eerste verdieping
+  stair(5, 17, 6.7, ZB, F0, FL, F0, 9.6);
+  box(M.marble, 17, F0, ZF, XO, FL, ZB);
+  stair(17, 5, ZF, 6.1, FL, F1, F0, 3.4);
+  box(M.marble, XT + 0.1, F0, ZF, 5, F1, 6.1);
+  // westvleugel: van de eerste verdieping naar de zolder
+  stair(-5, -17, ZF, 6.1, F1, FW, F1, 3.4);
+  box(M.marble, -XO, F1, ZF, -17, FW, ZB);
+  stair(-17, -5, 6.7, ZB, FW, F2, F1, 9.6);
+  box(M.marble, -5, F1, 6.7, -XT - 0.1, F2, ZB);
+  // rond rustkleed op de bordessen
+  for (const [x, y] of [[20, FL], [-20, FW]]) {
+    b.add(loper, new THREE.CylinderGeometry(2.6, 2.6, 0.03, 40).translate(x, y + 0.005, 6.5));
+  }
+
+  // tussenwanden tussen de traparmen, met leuning en trappaal
+  for (const s of [-1, 1]) {
+    const xa = s > 0 ? XT + 0.1 : -17, xb = s > 0 ? 17 : -XT - 0.1;
+    const y0 = s > 0 ? F0 : F1, top = s > 0 ? 7.6 : 12.8;
+    box(wall, xa, y0, 6.1, xb, top, 6.7);
+    box(M.oak, xa, top, 6.02, xb + (s > 0 ? 0.2 : 0), top + 0.12, 6.78);
+    const xp = s > 0 ? 17.05 : -17.05;
+    box(M.oak, xp - 0.25, y0, 6.0, xp + 0.25, top + 0.6, 6.8);
+    b.add(M.gold, new THREE.SphereGeometry(0.2, 14, 10).translate(xp, top + 0.8, 6.4));
+  }
+
+  // ---- zolderkamer -----------------------------------------------------------
+  holed(wall, 'x', 12.4, 12.6, ZFu, ZBu, F2, CEIL, [[4.3, 9.0, F2, 14.2]]);
+  // bed
+  box(M.oak, 20.3, F2, 1.3, 22.95, F2 + 0.45, 3.7);
+  box(sheet, 20.4, F2 + 0.45, 1.4, 22.85, F2 + 0.68, 3.6);
+  box(blanket, 20.4, F2 + 0.6, 1.4, 22.0, F2 + 0.74, 3.62);
+  box(sheet, 22.2, F2 + 0.68, 1.7, 22.8, F2 + 0.86, 3.3);
+  box(M.oak, 22.85, F2, 1.3, 22.98, F2 + 1.3, 3.7);
+  // kast, tafeltje, kruisbeeld
+  box(M.oak, 13.0, F2, 10.55, 14.7, F2 + 2.3, ZBu);
+  box(M.dark, 13.84, F2 + 0.2, 10.5, 13.86, F2 + 2.1, 10.55);
+  box(M.oak, 21.6, F2, 9.4, 22.9, F2 + 0.75, 11.2);
+  box(M.oak, 22.92, 13.0, 7.45, 22.98, 14.4, 7.55);
+  box(M.oak, 22.92, 13.75, 7.1, 22.98, 13.85, 7.9);
+  b.add(M.gold, new THREE.CapsuleGeometry(0.05, 0.5, 4, 8).translate(22.9, 13.75, 7.5));
+  b.add(loper, new THREE.CylinderGeometry(2.2, 2.2, 0.03, 32).scale(1.3, 1, 1).translate(17, F2 + 0.005, 6.5));
+
+  // ---- zolder: gebinten en wat spullen ----------------------------------------
+  for (let x = -21.5; x <= 21.5; x += 2.5) {
+    box(M.oak, x - 0.12, CEIL - 0.32, ZFu, x + 0.12, CEIL, ZBu);
+  }
+  for (const [x0, z0, x1, z1, h] of [[0.5, 1.2, 2.0, 2.6, 0.8], [5.5, 1.2, 6.6, 2.3, 1.1], [6.8, 1.2, 7.6, 2.0, 0.6], [9.5, 1.2, 11.5, 2.2, 0.9]]) {
+    box(M.oak, x0, F2, z0, x1, F2 + h, z1);
+  }
+
+  // ---- ramen van binnen: lichte vlakken achter de vensters van het model ------
+  function paneAt(x, y, z, w, h, facing, kind = 'seg') {
+    const g = new THREE.ShapeGeometry(new THREE.Shape(outline(kind, w, h)));
+    if (facing < 0) g.rotateY(Math.PI);
+    g.translate(x, y, z + facing * 0.012);
+    b.add(pane, g);
+    const fz = z + facing * 0.03;
+    const vtop = kind === 'rect' ? h : h - (kind === 'round' ? w / 2 : 0.17 * w);
+    box(M.frame, x - 0.04, y, Math.min(z, fz), x + 0.04, y + vtop, Math.max(z, fz), false);
+    box(M.frame, x - w / 2, y + vtop * 0.7 - 0.04, Math.min(z, fz), x + w / 2, y + vtop * 0.7 + 0.04, Math.max(z, fz), false);
+    box(M.stone, x - w / 2 - 0.1, y - 0.12, Math.min(z, z + facing * 0.25), x + w / 2 + 0.1, y, Math.max(z, z + facing * 0.25), false);
+  }
+  for (let i = 0; i < 6; i++) {
+    const xe = 3.4 + 20 * (i + 0.5) / 6;
+    for (const x of [xe, -xe]) {
+      if (x > 0) { paneAt(x, P.K.sill1, ZF, 1.6, P.K.win1, 1); paneAt(x, P.K.sill1, ZB, 1.6, P.K.win1, -1); }
+      paneAt(x, P.K.sill2, ZF, 1.6, P.K.win2, 1);
+      paneAt(x, P.K.sill2, ZB, 1.6, P.K.win2, -1);
+    }
+    if (i % 2 === 0) {
+      for (const x of [xe, -xe]) {
+        paneAt(x, F2 + 0.05, ZFu, 1.6, 1.8, 1, 'rect');
+        if (Math.abs(x - DORMER_X) > 0.1) paneAt(x, F2 + 0.05, ZBu, 1.6, 1.8, -1, 'rect');
+      }
+    }
+  }
+  for (const x of [-1, 1]) paneAt(x, P.K.sill2, ZT, 1.6, P.K.win2, 1, 'round');
+
+  // dagkanten van de dakkapel
+  for (const s of [-1, 1]) box(M.woodYellow, DORMER_X + s * 0.98 - (s > 0 ? 0 : 0.08), F2, ZBu, DORMER_X + s * 0.98 + (s > 0 ? 0.08 : 0), 13.75, 12.9);
+  box(M.woodYellow, DORMER_X - 1.06, F2 - 0.1, ZBu, DORMER_X + 1.06, F2, 12.9);
+
+  // ---- lambrisering in de hal ---------------------------------------------------
+  const dado = (x0, z0, x1, z1) => box(M.oak, x0, F0, z0, x1, F0 + 1.1, z1);
+  dado(-XT, ZT, XT, ZT + 0.05);
+  dado(-XT, ZT, -XT + 0.05, GZ0);
+  dado(-XT, GZ1, -XT + 0.05, ZB);
+  dado(XT - 0.05, ZT, XT, 6.8);
+  dado(-XT, ZB - 0.05, XT, ZB);
+
+  // ---- Heilig-Hartbeeld in de hal, binnen voor de (gesloten) voordeur -------------
+  {
+    const x = 0, z = 0.2;
+    box(M.stone, x - 0.55, F0, z - 0.55, x + 0.55, F0 + 1.2, z + 0.55);
+    b.add(M.whiteStone, new THREE.CapsuleGeometry(0.28, 1.1, 4, 12).translate(x, F0 + 2.05, z));
+    b.add(M.whiteStone, new THREE.SphereGeometry(0.18, 12, 10).translate(x, F0 + 2.95, z));
+    b.add(M.taillight, new THREE.SphereGeometry(0.09, 10, 8).translate(x, F0 + 2.3, z + 0.26));
+    b.add(M.gold, new THREE.TorusGeometry(0.25, 0.02, 6, 24).translate(x, F0 + 3.0, z - 0.04));
+  }
+
+  // ---- schilderijen -----------------------------------------------------------------
+  const paintings = [
+    // [x, y, z, breedte, hoogte, kijkrichting ('+x', '-x', '+z', '-z'), soort]
+    [0, 7.3, ZB, 2.8, 3.2, '-z', 'heart'],
+    [XO, 4.6, 6.5, 3.4, 2.4, '-x', 'land'],
+    [9, 4.0, ZB, 1.6, 2.1, '-z', 'portrait'],
+    [13.5, 5.4, ZB, 1.6, 2.1, '-z', 'portrait2'],
+    [-XO, 10.4, 6.5, 3.4, 2.4, '+x', 'land2'],
+    [-11, 11.6, ZB, 1.6, 2.1, '-z', 'portrait'],
+    [-2.95, 2.4, 4.5, 1.6, 2.0, '+x', 'portrait2'],
+  ];
+  for (const [x, y, z, w, h, dir, kind] of paintings) {
+    const mat = new THREE.MeshStandardMaterial({ map: paintingTex(kind), roughness: 0.7 });
+    const g = new THREE.PlaneGeometry(w, h);
+    const fr = 0.12;
+    if (dir === '-z') { g.rotateY(Math.PI); g.translate(x, y + h / 2, z - 0.06); box(M.gold, x - w / 2 - fr, y - fr, z - 0.05, x + w / 2 + fr, y + h + fr, z, false); }
+    if (dir === '+z') { g.translate(x, y + h / 2, z + 0.06); box(M.gold, x - w / 2 - fr, y - fr, z, x + w / 2 + fr, y + h + fr, z + 0.05, false); }
+    if (dir === '-x') { g.rotateY(-Math.PI / 2); g.translate(x - 0.06, y + h / 2, z); box(M.gold, x - 0.05, y - fr, z - w / 2 - fr, x, y + h + fr, z + w / 2 + fr, false); }
+    if (dir === '+x') { g.rotateY(Math.PI / 2); g.translate(x + 0.06, y + h / 2, z); box(M.gold, x, y - fr, z - w / 2 - fr, x + 0.05, y + h + fr, z + w / 2 + fr, false); }
+    const mesh = new THREE.Mesh(g, mat);
+    group.add(mesh);
+  }
+
+  // ---- kroonluchters en lampen ---------------------------------------------------
+  const lights = [];
+  function chandelier(x, y, z, r) {
+    b.add(M.iron, boxGeo(x - 0.02, y, z - 0.02, x + 0.02, y + 1.0, z + 0.02, false));
+    b.add(M.gold, new THREE.TorusGeometry(r, 0.04, 6, 32).rotateX(Math.PI / 2).translate(x, y, z));
+    for (let k = 0; k < 8; k++) {
+      const a = (k / 8) * Math.PI * 2;
+      b.add(M.bulb, new THREE.SphereGeometry(0.09, 8, 6).translate(x + Math.cos(a) * r, y + 0.12, z + Math.sin(a) * r));
+    }
+  }
+  function light(x, y, z, intensity = 30, dist = 22) {
+    const l = new THREE.PointLight(0xffe2b8, intensity, dist, 1.6);
+    l.position.set(x, y, z);
+    group.add(l);
+    lights.push(l);
+  }
+  chandelier(0, 5.0, 4.5, 0.8); light(0, 4.6, 4.5);
+  light(-30, 3.7, SIDE_Z, 16, 14);
+  light(-14, 3.7, SIDE_Z, 16, 14);
+  chandelier(0, 10.2, 7.5, 1.0); light(0, 9.8, 6.5);
+  chandelier(12, 10.0, 6.4, 0.8); light(12, 9.6, 6.4, 40);
+  chandelier(-12, 14.0, 6.4, 0.8); light(-12, 13.6, 6.4, 40);
+  light(3, 14.6, 7, 22, 16);
+  b.add(M.bulb, new THREE.SphereGeometry(0.16, 10, 8).translate(17.5, 14.75, 6.5));
+  light(17.5, 14.4, 6.5, 22, 16);
+
+  for (const m of b.flush(group)) { m.castShadow = true; m.receiveShadow = true; }
+  return { group, lights };
+}
+
+// Kleine schilderijen, op een canvas getekend.
+function paintingTex(kind) {
+  const c = document.createElement('canvas');
+  c.width = 256; c.height = 256;
+  const g = c.getContext('2d');
+  const W = 256;
+  if (kind === 'heart') {
+    const bg = g.createRadialGradient(W / 2, W / 2, 10, W / 2, W / 2, W * 0.7);
+    bg.addColorStop(0, '#6a3a1e'); bg.addColorStop(1, '#1d120c');
+    g.fillStyle = bg; g.fillRect(0, 0, W, W);
+    g.strokeStyle = 'rgba(232,190,90,.55)'; g.lineWidth = 3;
+    for (let i = 0; i < 24; i++) {
+      const a = (i / 24) * Math.PI * 2;
+      g.beginPath(); g.moveTo(W / 2 + Math.cos(a) * 40, W / 2 + Math.sin(a) * 40); g.lineTo(W / 2 + Math.cos(a) * 120, W / 2 + Math.sin(a) * 120); g.stroke();
+    }
+    g.fillStyle = '#b3171f';
+    g.beginPath();
+    g.moveTo(W / 2, W * 0.72);
+    g.bezierCurveTo(W * 0.18, W * 0.5, W * 0.3, W * 0.22, W / 2, W * 0.38);
+    g.bezierCurveTo(W * 0.7, W * 0.22, W * 0.82, W * 0.5, W / 2, W * 0.72);
+    g.fill();
+    g.fillStyle = '#f0c75a';
+    g.fillRect(W / 2 - 4, W * 0.18, 8, 34); g.fillRect(W / 2 - 14, W * 0.22, 28, 7);
+  } else if (kind.startsWith('land')) {
+    const sky = g.createLinearGradient(0, 0, 0, W);
+    sky.addColorStop(0, kind === 'land' ? '#8fb3d2' : '#e2a466'); sky.addColorStop(0.6, '#e8dcc0');
+    g.fillStyle = sky; g.fillRect(0, 0, W, W);
+    g.fillStyle = '#5b7a35'; g.fillRect(0, W * 0.62, W, W);
+    g.fillStyle = '#7a3a2b'; g.fillRect(W * 0.2, W * 0.42, W * 0.6, W * 0.22);
+    g.fillStyle = '#3e444c';
+    g.beginPath(); g.moveTo(W * 0.17, W * 0.43); g.lineTo(W * 0.5, W * 0.3); g.lineTo(W * 0.83, W * 0.43); g.fill();
+    g.fillRect(W * 0.47, W * 0.12, W * 0.06, W * 0.2);
+    g.beginPath(); g.moveTo(W * 0.45, W * 0.14); g.lineTo(W * 0.5, W * 0.02); g.lineTo(W * 0.55, W * 0.14); g.fill();
+    g.fillStyle = '#e4cf8a';
+    for (let i = 0; i < 6; i++) g.fillRect(W * (0.25 + i * 0.09), W * 0.5, 9, 14);
+  } else {
+    const bg = g.createLinearGradient(0, 0, W, W);
+    bg.addColorStop(0, kind === 'portrait' ? '#3a2a20' : '#22303a'); bg.addColorStop(1, '#0f0c0a');
+    g.fillStyle = bg; g.fillRect(0, 0, W, W);
+    g.fillStyle = '#141414';
+    g.beginPath(); g.ellipse(W / 2, W * 0.95, W * 0.38, W * 0.45, 0, Math.PI, 0); g.fill();
+    g.fillStyle = '#f2f0ea'; g.fillRect(W / 2 - 14, W * 0.52, 28, 12);
+    g.fillStyle = '#d9a983';
+    g.beginPath(); g.ellipse(W / 2, W * 0.38, W * 0.13, W * 0.17, 0, 0, Math.PI * 2); g.fill();
+    g.fillStyle = kind === 'portrait' ? '#9a9a9a' : '#4a3020';
+    g.beginPath(); g.ellipse(W / 2, W * 0.27, W * 0.14, W * 0.07, 0, Math.PI, 0); g.fill();
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+
+// ===== track.js ====================================================
+// De baan in de scène: asfaltstrook met rood-witte kerbs waar hij buiten
+// ligt, de startboog, boostpads en itemblokken. Plus het opzoeken van de
+// plek van een kart op de middenlijn.
+
+class Track {
+  constructor(M) {
+    this.S = sampleRoute(0.5);
+    this.group = new THREE.Group();
+    this.buildRibbon(M);
+    this.buildStart();
+
+    // boostpads en rijen itemblokken staan als opties bij de punten van de route
+    const at = (i, ahead = 0) => (this.firstOf(i) + Math.round(ahead / this.S.step)) % this.S.N;
+    this.pads = [];
+    this.itemRows = [];
+    ROUTE.forEach((p, i) => {
+      const o = p[4] ?? {};
+      if (o.pad !== undefined) this.pads.push(this.addPad(at(i, o.pad)));
+      if (o.items !== undefined) this.itemRows.push(at(i, o.items));
+    });
+  }
+
+  /** Eerste monster van segment i. */
+  firstOf(i) {
+    const S = this.S;
+    for (let j = 0; j < S.N; j++) if (S.seg[j] === i) return j;
+    return 0;
+  }
+
+  /** Dichtstbijzijnde monster rond het vorige, binnen ook op hoogte. */
+  nearest(prev, x, y, z, back = 40, ahead = 90) {
+    const S = this.S, N = S.N;
+    let best = prev, bd = Infinity;
+    for (let k = -back; k <= ahead; k++) {
+      const j = (prev + k + N) % N;
+      const dx = x - S.x[j], dz = z - S.z[j];
+      let d = dx * dx + dz * dz;
+      if (S.indoor[j]) { const dy = y - S.floor[j]; d += dy * dy * 4; }
+      if (d < bd) { bd = d; best = j; }
+    }
+    return best;
+  }
+
+  /** Volledig zoeken, voor het plaatsen. */
+  nearestAll(x, y, z) {
+    return this.nearest(0, x, y, z, 0, this.S.N - 1);
+  }
+
+  point(j, lateral = 0, out = new THREE.Vector3()) {
+    const S = this.S;
+    j = ((j % S.N) + S.N) % S.N;
+    return out.set(S.x[j] - S.tz[j] * lateral, S.floor[j], S.z[j] + S.tx[j] * lateral);
+  }
+
+  buildRibbon(M) {
+    const S = this.S, N = S.N;
+    const asphalt = new THREE.MeshStandardMaterial({
+      map: M.asphalt.map, color: '#8e9096', roughness: 0.92,
+    });
+    const red = new THREE.MeshStandardMaterial({ color: '#c42a22', roughness: 0.6 });
+    const white = new THREE.MeshStandardMaterial({ color: '#f1efe9', roughness: 0.6 });
+    const road = [], roadUV = [], kerbs = [[], []];
+    const out = (j) => !S.indoor[j];
+    const edge = (j, l, y) => [S.x[j] - S.tz[j] * l, y, S.z[j] + S.tx[j] * l];
+    const quad = (arr, a, b, c, d) => arr.push(...a, ...b, ...c, ...a, ...c, ...d);
+    for (let j = 0; j < N; j++) {
+      const k = (j + 1) % N;
+      if (!out(j) || !out(k)) continue;
+      const ya = S.floor[j], yb = S.floor[k];
+      const ha = S.hw[j], hb = S.hw[k];
+      // links = -lateraal; de normaal moet omhoog wijzen
+      const aL = edge(j, ha, ya), aR = edge(j, -ha, ya), bL = edge(k, hb, yb), bR = edge(k, -hb, yb);
+      quad(road, aR, aL, bL, bR);
+      const va = j * S.step, vb = (j + 1) * S.step;
+      roadUV.push(0, va, 2 * ha, va, 2 * hb, vb, 0, va, 2 * hb, vb, 0, vb);
+      const col = Math.floor(j * S.step / 1.5) % 2;
+      for (const s of [-1, 1]) {
+        const i0a = edge(j, s * (ha - 0.1), ya + 0.012), i1a = edge(j, s * (ha + 0.45), ya + 0.012);
+        const i0b = edge(k, s * (hb - 0.1), yb + 0.012), i1b = edge(k, s * (hb + 0.45), yb + 0.012);
+        if (s > 0) quad(kerbs[col], i0a, i1a, i1b, i0b); else quad(kerbs[col], i1a, i0a, i0b, i1b);
+      }
+    }
+    const mk = (pos, uv, mat) => {
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+      if (uv) g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+      g.computeVertexNormals();
+      const m = new THREE.Mesh(g, mat);
+      m.receiveShadow = true;
+      this.group.add(m);
+    };
+    mk(road, roadUV, asphalt);
+    mk(kerbs[0], null, red);
+    mk(kerbs[1], null, white);
+  }
+
+  buildStart() {
+    const S = this.S, j = 0;
+    const hw = S.hw[j];
+    const yaw = Math.atan2(S.tx[j], S.tz[j]);
+    // geblokte startlijn
+    const c = document.createElement('canvas');
+    c.width = 256; c.height = 32;
+    const g = c.getContext('2d');
+    for (let x = 0; x < 16; x++) for (let y = 0; y < 2; y++) {
+      g.fillStyle = (x + y) % 2 ? '#111' : '#f4f4f4';
+      g.fillRect(x * 16, y * 16, 16, 16);
+    }
+    const tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    const line = new THREE.Mesh(new THREE.PlaneGeometry(2 * hw, 1.2).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.7 }));
+    line.rotation.y = yaw;
+    line.position.set(S.x[j], S.floor[j] + 0.015, S.z[j]);
+    this.group.add(line);
+
+    // startboog over de Bredaseweg
+    const arch = new THREE.Group();
+    arch.position.set(S.x[j], 0, S.z[j]);
+    arch.rotation.y = yaw;
+    const post = new THREE.MeshStandardMaterial({ color: '#2a2a2e', roughness: 0.5, metalness: 0.5 });
+    const span = hw + 1.0;
+    for (const s of [-1, 1]) {
+      const p = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.2, 6.2, 10), post);
+      p.position.set(s * span, 3.1, 0);
+      p.castShadow = true;
+      arch.add(p);
+    }
+    const bc = document.createElement('canvas');
+    bc.width = 1024; bc.height = 128;
+    const bg = bc.getContext('2d');
+    bg.fillStyle = '#b3171f'; bg.fillRect(0, 0, 1024, 128);
+    bg.fillStyle = '#f6efe2'; bg.fillRect(0, 8, 1024, 4); bg.fillRect(0, 116, 1024, 4);
+    bg.font = 'bold 76px "Segoe UI", system-ui, sans-serif';
+    bg.textAlign = 'center'; bg.textBaseline = 'middle';
+    bg.fillStyle = '#ffffff';
+    bg.fillText('♥  ROOI HARTEN KART  ♥', 512, 68);
+    const btex = new THREE.CanvasTexture(bc);
+    btex.colorSpace = THREE.SRGBColorSpace;
+    const banner = new THREE.Mesh(new THREE.BoxGeometry(2 * span, 1.1, 0.12), [
+      post, post, post, post,
+      new THREE.MeshStandardMaterial({ map: btex, roughness: 0.6 }),
+      new THREE.MeshStandardMaterial({ map: btex, roughness: 0.6 }),
+    ]);
+    banner.position.set(0, 5.5, 0);
+    banner.castShadow = true;
+    arch.add(banner);
+    this.group.add(arch);
+  }
+
+  addPad(j) {
+    const S = this.S;
+    if (!Track.padTex) {
+      const c = document.createElement('canvas');
+      c.width = 128; c.height = 192;
+      const g = c.getContext('2d');
+      g.fillStyle = '#ff8a00'; g.fillRect(0, 0, 128, 192);
+      g.fillStyle = '#ffe14a';
+      for (let i = 0; i < 3; i++) {
+        const y = 150 - i * 52;
+        g.beginPath(); g.moveTo(14, y); g.lineTo(64, y - 40); g.lineTo(114, y); g.lineTo(114, y + 22); g.lineTo(64, y - 18); g.lineTo(14, y + 22); g.fill();
+      }
+      Track.padTex = new THREE.CanvasTexture(c);
+      Track.padTex.colorSpace = THREE.SRGBColorSpace;
+    }
+    const mat = new THREE.MeshBasicMaterial({ map: Track.padTex, toneMapped: false });
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(1.8, 2.6).rotateX(-Math.PI / 2), mat);
+    m.rotation.y = Math.atan2(S.tx[j], S.tz[j]) + Math.PI;
+    m.position.set(S.x[j], S.floor[j] + 0.03, S.z[j]);
+    this.group.add(m);
+    return { j, mesh: m };
+  }
+
+  /** Naam van het gebied bij monster j. */
+  zone(j) { return this.S.zone[j]; }
+
+  /** Waypoints, voor de minimap en tests. */
+  get route() { return ROUTE; }
+}
+
+// ===== kart.js =====================================================
+// De karts: een eenvoudig model en arcade-fysica (gas, remmen, sturen,
+// driften met mini-turbo, springen, gras, botsen).
+
+const KART = {
+  vmax: 21,            // m/s, ~75 km/u
+  accel: 15,
+  brake: 28,
+  reverse: 6,
+  turn: 2.7,           // rad/s bij lage snelheid
+  grip: 10,
+  driftGrip: 2.6,
+  gravity: 16,         // iets minder dan echt: langer zweven na het zolderraam
+  radius: 0.75,
+  half: 0.62,          // halve breedte tegen de wanden
+  boostMul: 1.45,
+};
+
+/** Ruimtelijk raster over de botsingsboxen van het kloostermodel. */
+class ColliderGrid {
+  constructor(list, cell = 8) {
+    this.cell = cell;
+    this.map = new Map();
+    for (const c of list) {
+      for (let i = Math.floor(c.x0 / cell); i <= Math.floor(c.x1 / cell); i++) {
+        for (let k = Math.floor(c.z0 / cell); k <= Math.floor(c.z1 / cell); k++) {
+          const key = i * 4096 + k;
+          if (!this.map.has(key)) this.map.set(key, []);
+          this.map.get(key).push(c);
+        }
+      }
+    }
+  }
+  near(x, z) {
+    return this.map.get(Math.floor(x / this.cell) * 4096 + Math.floor(z / this.cell)) ?? [];
+  }
+}
+
+class Kart {
+  constructor({ name, color, suit, skin = '#e0b48f', hat }) {
+    this.name = name;
+    this.color = color;
+    this.mesh = buildKartMesh(color, suit, skin, hat ?? color);
+    this.pos = new THREE.Vector3();
+    this.h = 0;
+    this.vx = 0; this.vz = 0; this.vy = 0;
+    this.grounded = true;
+    this.idx = 0;            // monster op de baan
+    this.lat = 0;            // zijwaartse afstand tot de middenlijn
+    this.dist = 0;           // afgelegde baanmonsters sinds de start
+    this.boost = 0;
+    this.drift = 0;          // -1 / 0 / 1
+    this.charge = 0;
+    this.spin = 0;
+    this.item = null;
+    this.offroad = false;
+    this.indoor = false;
+    this.finished = false;
+    this.finishTime = 0;
+    this.lapTimes = [];
+    this.speedMul = 1;       // inhaalhulp voor de computer
+    this.stuck = 0;
+    this.respawns = 0;
+    this.wallHits = 0;
+    this.airTime = 0;
+    this.pitch = 0;
+    this.bump = 0;
+  }
+
+  get speed() { return Math.hypot(this.vx, this.vz); }
+  get fwd() { return [Math.sin(this.h), Math.cos(this.h)]; }
+
+  place(track, j, lateral = 0, back = 0) {
+    const S = track.S;
+    const jj = ((j - Math.round(back / S.step)) % S.N + S.N) % S.N;
+    const rx = -S.tz[jj], rz = S.tx[jj];
+    this.pos.set(S.x[jj] + rx * lateral, S.floor[jj], S.z[jj] + rz * lateral);
+    this.h = Math.atan2(S.tx[jj], S.tz[jj]);
+    this.vx = this.vz = this.vy = 0;
+    this.idx = jj;
+    this.grounded = true;
+    this.boost = 0; this.drift = 0; this.charge = 0; this.spin = 0;
+    this.syncMesh(track, 0);
+  }
+
+  respawn(track) {
+    // terug naar het midden van de baan, iets terug, nooit midden in de sprong
+    let j = this.idx;
+    const S = track.S;
+    for (let k = 0; k < 80 && S.jump[j]; k++) j = (j - 1 + S.N) % S.N;
+    (this.respawnLog ??= []).push(`${S.seg[this.idx]}@${this.pos.x.toFixed(1)},${this.pos.y.toFixed(1)},${this.pos.z.toFixed(1)}`);
+    this.place(track, j, 0, 0);
+    this.respawns++;
+    this.stuck = 0;
+  }
+
+  /** input: { throttle -1..1, steer -1..1 (positief = rechts), drift bool } */
+  update(dt, input, track, grid) {
+    const S = track.S;
+    const [fx, fz] = this.fwd;
+    const rx = -fz, rz = fx;
+    let vF = this.vx * fx + this.vz * fz;
+    let vL = this.vx * rx + this.vz * rz;
+
+    let throttle = input.throttle, steer = input.steer;
+    if (this.spin > 0) { this.spin -= dt; throttle = 0; steer = 0; vF *= Math.exp(-2.5 * dt); }
+    if (this.finished && !input.auto) throttle = 0;
+
+    const boosting = this.boost > 0;
+    if (boosting) this.boost -= dt;
+    let vmax = KART.vmax * this.speedMul;
+    if (boosting) vmax *= KART.boostMul;
+    else if (this.offroad) vmax *= 0.5;
+
+    if (this.grounded) {
+      // gas en rem
+      if (boosting) vF += KART.accel * 1.6 * dt;
+      if (throttle > 0) {
+        if (vF < vmax) vF += throttle * KART.accel * (1 - 0.55 * Math.max(0, vF) / vmax) * dt;
+      } else if (throttle < 0) {
+        if (vF > 0.5) vF -= KART.brake * -throttle * dt;
+        else vF = Math.max(vF - 9 * -throttle * dt, -KART.reverse);
+      } else {
+        vF -= Math.sign(vF) * Math.min(Math.abs(vF), 4 * dt);
+      }
+      if (vF > vmax) vF -= (vF - vmax) * (this.offroad ? 3 : 1.5) * dt;
+
+      // helling: trap op kost snelheid
+      const j = this.idx;
+      const grad = (S.floor[(j + 2) % S.N] - S.floor[(j - 2 + S.N) % S.N]) / (4 * S.step);
+      if (!S.jump[j] && Math.abs(grad) < 1) vF -= 9.8 * grad * (fx * S.tx[j] + fz * S.tz[j]) * 0.55 * dt;
+
+      // driften
+      if (input.drift && !this.drift && Math.abs(steer) > 0.3 && vF > 8) {
+        this.drift = Math.sign(steer);
+        this.charge = 0;
+        this.vy = 2.6;
+        this.grounded = false;
+      }
+      if (this.drift && (!input.drift || vF < 5)) {
+        if (this.charge > 1.3) this.boost = Math.max(this.boost, 1.0);
+        else if (this.charge > 0.6) this.boost = Math.max(this.boost, 0.5);
+        this.drift = 0;
+        this.charge = 0;
+      }
+
+      // sturen
+      const sf = Math.min(1, Math.abs(vF) / 4) * (1 - 0.3 * Math.min(1, Math.abs(vF) / KART.vmax));
+      let rate;
+      if (this.drift) {
+        const s = this.drift * (0.55 + 0.45 * steer * this.drift);
+        rate = s * KART.turn * 1.2 * sf;
+        this.charge += dt * (0.6 + 0.6 * Math.abs(steer));
+        vL -= this.drift * 3.5 * dt;
+      } else {
+        rate = steer * KART.turn * sf;
+      }
+      this.h -= rate * Math.sign(vF || 1) * dt;
+      vL *= Math.exp(-(this.drift ? KART.driftGrip : KART.grip) * dt);
+    } else {
+      // in de lucht: een beetje bijsturen
+      this.h -= steer * 0.9 * dt;
+    }
+
+    const [gx, gz] = this.fwd;
+    this.vx = gx * vF + (-gz) * vL;
+    this.vz = gz * vF + gx * vL;
+
+    // bewegen
+    this.pos.x += this.vx * dt;
+    this.pos.z += this.vz * dt;
+    this.vy -= KART.gravity * dt;
+    this.pos.y += this.vy * dt;
+
+    // waar op de baan
+    this.idx = track.nearest(this.idx, this.pos.x, this.pos.y, this.pos.z);
+    const j = this.idx;
+    const tx = S.tx[j], tz = S.tz[j];
+    const nx = -tz, nz = tx;
+    this.lat = (this.pos.x - S.x[j]) * nx + (this.pos.z - S.z[j]) * nz;
+    this.indoor = !!S.indoor[j];
+    const hw = S.hw[j];
+
+    if (this.indoor) {
+      // harde wanden op de baanrand
+      const lim = Math.max(0.05, hw - KART.half);
+      if (Math.abs(this.lat) > lim) {
+        const over = this.lat - Math.sign(this.lat) * lim;
+        this.pos.x -= nx * over;
+        this.pos.z -= nz * over;
+        this.lat -= over;
+        const vn = this.vx * nx + this.vz * nz;
+        if (vn * Math.sign(over) > 0) {
+          this.vx -= nx * vn * 1.3;
+          this.vz -= nz * vn * 1.3;
+          if (Math.abs(vn) > 3) { this.wallHits++; this.bump = 0.25; }
+        }
+        this.vx *= 1 - 0.8 * dt;
+        this.vz *= 1 - 0.8 * dt;
+      }
+      this.offroad = false;
+    } else {
+      this.offroad = Math.abs(this.lat) > hw + 0.3;
+      if (grid) this.collide(grid);
+      // ver van de baan: zachtjes terugduwen
+      const far = Math.abs(this.lat) - (hw + 16);
+      if (far > 0) { this.pos.x -= nx * Math.sign(this.lat) * far * 0.2; this.pos.z -= nz * Math.sign(this.lat) * far * 0.2; }
+    }
+
+    // vloer
+    const floor = this.offroad && !this.indoor ? 0.02 : S.floor[j];
+    this.floorY = floor;
+    const wasAir = !this.grounded;
+    if (this.pos.y <= floor + 0.001 || (this.grounded && this.vy <= 0 && this.pos.y - floor < 0.4)) {
+      if (wasAir && this.vy < -9) { this.bump = 0.35; this.vy = -this.vy * 0.18; this.pos.y = floor + 0.001; this.grounded = this.vy < 0.5; }
+      else { this.pos.y = floor; this.vy = 0; this.grounded = true; }
+      if (wasAir) this.airTime = 0;
+    } else {
+      this.grounded = false;
+      this.airTime += dt;
+    }
+
+    // vastgereden?
+    if (this.speed < 1 && throttle !== 0 && this.spin <= 0) this.stuck += dt; else this.stuck = Math.max(0, this.stuck - dt * 2);
+    if (this.pos.y < -5) this.respawn(track);
+
+    this.syncMesh(track, dt);
+  }
+
+  collide(grid) {
+    const R = KART.radius;
+    for (const c of grid.near(this.pos.x, this.pos.z)) {
+      if (this.pos.y + 1.0 < c.y0 || this.pos.y > c.y1) continue;
+      const x = this.pos.x, z = this.pos.z;
+      if (x < c.x0 - R || x > c.x1 + R || z < c.z0 - R || z > c.z1 + R) continue;
+      const pl = x - (c.x0 - R), pr = c.x1 + R - x, pb = z - (c.z0 - R), pf = c.z1 + R - z;
+      const m = Math.min(pl, pr, pb, pf);
+      let nx = 0, nz = 0;
+      if (m === pl) { this.pos.x -= pl; nx = -1; }
+      else if (m === pr) { this.pos.x += pr; nx = 1; }
+      else if (m === pb) { this.pos.z -= pb; nz = -1; }
+      else { this.pos.z += pf; nz = 1; }
+      const vn = this.vx * nx + this.vz * nz;
+      if (vn < 0) {
+        this.vx -= nx * vn * 1.4;
+        this.vz -= nz * vn * 1.4;
+        this.vx *= 0.8; this.vz *= 0.8;
+        if (vn < -4) { this.wallHits++; this.bump = 0.3; }
+      }
+    }
+  }
+
+  useItem(world) {
+    if (!this.item) return;
+    if (this.item === 'paddenstoel') this.boost = Math.max(this.boost, 1.3);
+    else if (this.item === 'banaan') world.dropBanana(this);
+    this.item = null;
+  }
+
+  syncMesh(track, dt) {
+    const S = track.S, j = this.idx;
+    const m = this.mesh;
+    m.position.copy(this.pos);
+    let pitch = 0;
+    if (this.grounded) {
+      const grad = (S.floor[(j + 2) % S.N] - S.floor[(j - 2 + S.N) % S.N]) / (4 * S.step);
+      const along = Math.sin(this.h) * S.tx[j] + Math.cos(this.h) * S.tz[j];
+      if (!S.jump[j] && !this.offroad) pitch = -Math.atan(grad * along);
+    } else {
+      pitch = Math.min(0.35, Math.max(-0.35, -this.vy * 0.03));
+    }
+    this.pitch += (pitch - this.pitch) * Math.min(1, dt * 12 || 1);
+    this.bump = Math.max(0, this.bump - dt);
+    m.rotation.set(this.pitch + Math.sin(this.bump * 40) * this.bump * 0.15, this.h + (this.spin > 0 ? this.spin * 14 : 0), this.drift * 0.09, 'YXZ');
+
+    const u = m.userData;
+    const sp = this.speed;
+    u.spinWheels += sp * dt / 0.3;
+    for (const w of u.wheels) w.rotation.x = u.spinWheels;
+    for (const w of u.front) w.rotation.y = this.steerVis ?? 0;
+    u.flame.visible = this.boost > 0;
+    if (u.flame.visible) u.flame.scale.setScalar(0.8 + Math.random() * 0.5);
+    const lvl = this.charge > 1.3 ? 2 : this.charge > 0.6 ? 1 : 0;
+    for (const s of u.sparks) {
+      s.visible = this.drift !== 0 && this.grounded && lvl > 0;
+      s.material = lvl === 2 ? SPARK_ORANGE : SPARK_BLUE;
+      s.scale.setScalar(0.6 + Math.random() * 0.6);
+    }
+  }
+}
+
+const SPARK_BLUE = new THREE.MeshBasicMaterial({ color: '#7fd4ff' });
+const SPARK_ORANGE = new THREE.MeshBasicMaterial({ color: '#ffad3b' });
+
+function buildKartMesh(color, suit, skin, hat) {
+  const g = new THREE.Group();
+  const std = (c, o = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.45, metalness: 0.15, ...o });
+  const paint = std(color, { roughness: 0.3, metalness: 0.3 });
+  const black = std('#1b1b1e', { roughness: 0.8 });
+  const chrome = std('#cfd3d8', { roughness: 0.2, metalness: 1 });
+  const suitM = std(suit, { roughness: 0.8 });
+  const skinM = std(skin, { roughness: 0.7 });
+  const hatM = std(hat, { roughness: 0.6 });
+  const heartM = std('#c4141e', { roughness: 0.35, emissive: '#5a0006', emissiveIntensity: 0.6 });
+  const add = (geo, mat, x, y, z) => { const o = new THREE.Mesh(geo, mat); o.position.set(x, y, z); o.castShadow = true; g.add(o); return o; };
+
+  add(new THREE.BoxGeometry(1.0, 0.22, 1.9), paint, 0, 0.3, 0);
+  add(new THREE.BoxGeometry(0.7, 0.2, 0.7), paint, 0, 0.36, 1.05);
+  add(new THREE.BoxGeometry(1.25, 0.12, 0.28), black, 0, 0.26, 1.42);
+  add(new THREE.BoxGeometry(1.3, 0.14, 0.35), black, 0, 0.36, -1.0);
+  for (const s of [-1, 1]) add(new THREE.BoxGeometry(0.22, 0.26, 1.1), paint, s * 0.6, 0.34, -0.05);
+  add(new THREE.BoxGeometry(0.62, 0.5, 0.18), black, 0, 0.6, -0.55);
+  add(new THREE.BoxGeometry(0.62, 0.1, 0.6), black, 0, 0.44, -0.3);
+  // hart op de neus: de Rooi Harten
+  const hs = new THREE.Shape();
+  hs.moveTo(0, -0.16);
+  hs.bezierCurveTo(-0.22, 0.0, -0.14, 0.17, 0, 0.07);
+  hs.bezierCurveTo(0.14, 0.17, 0.22, 0.0, 0, -0.16);
+  const heart = add(new THREE.ExtrudeGeometry(hs, { depth: 0.04, bevelEnabled: false }), heartM, 0, 0.47, 1.12);
+  heart.rotation.x = -Math.PI / 2 + 0.25;
+  // stuur
+  const sw = add(new THREE.TorusGeometry(0.15, 0.03, 6, 16), black, 0, 0.78, 0.32);
+  sw.rotation.x = -0.9;
+  add(new THREE.CylinderGeometry(0.025, 0.025, 0.35, 6), black, 0, 0.62, 0.42).rotation.x = 0.7;
+  // uitlaten
+  for (const s of [-1, 1]) add(new THREE.CylinderGeometry(0.06, 0.07, 0.3, 8), chrome, s * 0.3, 0.42, -1.2).rotation.x = Math.PI / 2;
+  // wielen
+  const wheels = [], front = [];
+  for (const [x, z, r, w] of [[-0.66, 0.72, 0.25, 0.24], [0.66, 0.72, 0.25, 0.24], [-0.7, -0.72, 0.3, 0.32], [0.7, -0.72, 0.3, 0.32]]) {
+    const hub = new THREE.Group();
+    hub.position.set(x, r, z);
+    const tire = new THREE.Mesh(new THREE.CylinderGeometry(r, r, w, 16).rotateZ(Math.PI / 2), black);
+    tire.castShadow = true;
+    const rim = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.55, r * 0.55, w + 0.02, 10).rotateZ(Math.PI / 2), chrome);
+    const spin = new THREE.Group();
+    spin.add(tire, rim);
+    hub.add(spin);
+    g.add(hub);
+    wheels.push(spin);
+    if (z > 0) front.push(hub);
+  }
+  // rijder
+  add(new THREE.CapsuleGeometry(0.22, 0.32, 4, 10), suitM, 0, 0.82, -0.25);
+  add(new THREE.SphereGeometry(0.2, 16, 12), skinM, 0, 1.28, -0.2);
+  add(new THREE.SphereGeometry(0.215, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2), hatM, 0, 1.32, -0.2);
+  add(new THREE.BoxGeometry(0.34, 0.04, 0.2), hatM, 0, 1.32, 0.0);
+  for (const s of [-1, 1]) {
+    const arm = add(new THREE.CapsuleGeometry(0.07, 0.36, 4, 8), suitM, s * 0.2, 0.86, 0.02);
+    arm.rotation.x = -1.1;
+    arm.rotation.z = -s * 0.25;
+  }
+  // turbovlam en driftvonken
+  const flame = new THREE.Group();
+  for (const s of [-1, 1]) {
+    const f = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.55, 8).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: '#ffb347' }));
+    f.position.set(s * 0.3, 0.42, -1.55);
+    flame.add(f);
+  }
+  flame.visible = false;
+  g.add(flame);
+  const sparks = [];
+  for (const s of [-1, 1]) {
+    const sp = new THREE.Mesh(new THREE.OctahedronGeometry(0.12), SPARK_BLUE);
+    sp.position.set(s * 0.72, 0.1, -0.95);
+    sp.visible = false;
+    g.add(sp);
+    sparks.push(sp);
+  }
+  g.userData = { wheels, front, flame, sparks, spinWheels: 0 };
+  return g;
+}
+
+// ===== ai.js =======================================================
+// Computertegenstanders: volgen de middenlijn met een eigen rijlijn, remmen
+// voor krappe bochten (de bordessen van de trappen!) en gebruiken items.
+
+class AIDriver {
+  constructor(kart, { skill = 0.95, lane = 0, seed = 1 } = {}) {
+    this.kart = kart;
+    this.skill = skill;
+    this.lane = lane;
+    this.t = seed * 3.7;
+    this.itemDelay = 0;
+  }
+
+  think(dt, track, leader) {
+    const k = this.kart, S = track.S, N = S.N;
+    this.t += dt;
+    const v = k.speed;
+
+    // rijlijn: iets naast het midden, langzaam wisselend; binnen smaller
+    const j0 = k.idx;
+    const look = Math.min(16, Math.max(4.5, 3 + v * 0.42));
+    const jt = (j0 + Math.round(look / S.step)) % N;
+    const room = Math.max(0, S.hw[jt] - 1.0);
+    const off = Math.max(-room, Math.min(room, (this.lane + 0.35 * Math.sin(this.t * 0.4)) * room * 0.6));
+    const tx = S.x[jt] - S.tz[jt] * off, tz = S.z[jt] + S.tx[jt] * off;
+
+    const [fx, fz] = k.fwd;
+    const dx = tx - k.pos.x, dz = tz - k.pos.z;
+    const right = dx * -fz + dz * fx;
+    const ahead = dx * fx + dz * fz;
+    const ang = Math.atan2(right, ahead);
+    let steer = Math.max(-1, Math.min(1, ang * 2.4));
+
+    // hoe krap wordt het? kijk een stuk vooruit naar de draaiing van de baan
+    const span = Math.round((5 + v * 0.9) / S.step);
+    let turn = 0;
+    const a0 = Math.atan2(S.tx[j0], S.tz[j0]);
+    for (let s = 4; s <= span; s += 4) {
+      const j = (j0 + s) % N;
+      let d = Math.atan2(S.tx[j], S.tz[j]) - a0;
+      d = Math.abs(Math.atan2(Math.sin(d), Math.cos(d)));
+      turn = Math.max(turn, d);
+    }
+    const want = Math.max(6.5, 22 * (1 - Math.min(0.72, turn * 0.5))) * this.skill;
+    let throttle = v > want + 1.5 ? -0.7 : v > want ? 0 : 1;
+    if (ahead < 0 && Math.abs(ang) > 2) { throttle = -1; steer = -Math.sign(right); }   // verkeerd om: achteruit keren
+
+    // inhaalhulp
+    if (leader) {
+      const gap = (leader.dist - k.dist) * S.step;
+      k.speedMul = gap > 40 ? 1.1 : gap > 15 ? 1.04 : gap < -40 ? 0.9 : gap < -15 ? 0.96 : 1;
+    }
+
+    // items
+    let item = false;
+    if (k.item) {
+      this.itemDelay += dt;
+      if (k.item === 'paddenstoel' && turn < 0.25 && this.itemDelay > 0.6) item = true;
+      if (k.item === 'banaan' && this.itemDelay > 2.5) item = true;
+    } else this.itemDelay = 0;
+
+    // vast tegen iets: even achteruit, daarna terugzetten
+    if (k.stuck > 1.0) { throttle = -1; steer = -steer; }
+    if (k.stuck > 2.5) k.respawn(track);
+
+    return { throttle, steer, drift: false, item, auto: true };
+  }
+}
+
+// ===== touch.js ====================================================
+// Besturing op een telefoon of tablet. Sturen door met een duim over het
+// scherm te schuiven (vegen); knoppen voor gas, remmen, driften (geeft ook
+// gas), item en pauze.
+
+const IS_TOUCH = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
+
+class TouchControls {
+  constructor() {
+    this.steer = 0;
+    this.gas = false;
+    this.brake = false;
+    this.drift = false;
+    this.itemTap = false;
+    this.pauseTap = false;
+    this.drag = null;          // { id, x0 }
+
+    this.el = document.getElementById('touch');
+    const btn = (id, on, off) => {
+      const b = document.getElementById(id);
+      b.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); b.classList.add('down'); on(); });
+      const up = (e) => { e.preventDefault(); b.classList.remove('down'); off?.(); };
+      b.addEventListener('pointerup', up);
+      b.addEventListener('pointercancel', up);
+      b.addEventListener('pointerleave', up);
+    };
+    btn('t-gas', () => { this.gas = true; }, () => { this.gas = false; });
+    btn('t-brake', () => { this.brake = true; }, () => { this.brake = false; });
+    btn('t-drift', () => { this.drift = true; }, () => { this.drift = false; });
+    btn('t-item', () => { this.itemTap = true; });
+    btn('t-pause', () => { this.pauseTap = true; });
+
+    // vegen: duim neerzetten en opzij schuiven
+    const zone = document.getElementById('t-steer');
+    this.knob = document.getElementById('t-knob');
+    zone.addEventListener('pointerdown', (e) => {
+      if (this.drag) return;
+      this.drag = { id: e.pointerId, x0: e.clientX };
+      zone.setPointerCapture(e.pointerId);
+      this.showKnob(e.clientX, e.clientY, 0);
+    });
+    zone.addEventListener('pointermove', (e) => {
+      if (!this.drag || e.pointerId !== this.drag.id) return;
+      const range = Math.min(110, innerWidth * 0.12);
+      this.steer = Math.max(-1, Math.min(1, (e.clientX - this.drag.x0) / range));
+      this.showKnob(this.drag.x0, null, this.steer * range);
+    });
+    const end = (e) => {
+      if (!this.drag || e.pointerId !== this.drag.id) return;
+      this.drag = null;
+      this.steer = 0;
+      this.knob.hidden = true;
+    };
+    zone.addEventListener('pointerup', end);
+    zone.addEventListener('pointercancel', end);
+
+    // pinch-zoom, dubbeltik-zoom en het lang-drukmenu uit; het spel heeft het hele scherm nodig
+    document.addEventListener('gesturestart', (e) => e.preventDefault());
+    document.addEventListener('dblclick', (e) => e.preventDefault());
+    document.addEventListener('contextmenu', (e) => e.preventDefault());
+  }
+
+  showKnob(x, y, dx) {
+    const k = this.knob;
+    k.hidden = false;
+    if (y !== null) { k.style.left = `${x}px`; k.style.top = `${y}px`; }
+    k.firstElementChild.style.transform = `translateX(${dx}px)`;
+  }
+
+  /** Bij de start (vanuit een tik): knoppen tonen, volledig scherm, liggend. */
+  async begin() {
+    this.el.hidden = false;
+    document.body.classList.add('touching');
+    try {
+      if (!document.fullscreenElement) await document.documentElement.requestFullscreen?.({ navigationUI: 'hide' });
+      await screen.orientation?.lock?.('landscape');
+    } catch { /* mag niet op elk toestel */ }
+  }
+
+  /** Gas: -1, 0 of 1. Driften geeft ook gas, zodat je duim op één knop kan blijven. */
+  get throttle() {
+    if (this.gas || this.drift) return 1;
+    return this.brake ? -1 : 0;
+  }
+
+  takeItem() { const t = this.itemTap; this.itemTap = false; return t; }
+  takePause() { const t = this.pauseTap; this.pauseTap = false; return t; }
+}
+
+// ===== game.js =====================================================
+// Rooi Harten Kart: een kartrace rond en door het Missiehuis van het Heilig
+// Hart, Bredaseweg 204, Tilburg. Het klooster, de kapel en het terrein komen
+// rechtstreeks uit het 3D-model in ../rooi-harten-tilburg-3d.
+
+const LAPS = 3;
+const HASH = decodeURIComponent(location.hash.slice(1));
+const TEST = HASH === 'test';
+const DBG = new URLSearchParams(location.search).get('dbg') ?? '';
+
+// laat het laadbericht eerst verschijnen; het opbouwen duurt even
+await new Promise((res) => requestAnimationFrame(() => setTimeout(res, 0)));
+
+// --------------------------------------------------------------------------
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, IS_TOUCH ? 1.5 : 2));   // telefoons: minder pixels, vloeiender
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+document.getElementById('app').appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.08, 2600);
+scene.fog = new THREE.Fog(0xc3d9ea, 160, 900);
+
+// lucht: middag op een zomerdag, zon in het zuidwesten (zie main.js van het model)
+const sunDir = new THREE.Vector3(-0.196, 0.86, 0.472).normalize();
+{
+  const sky = new THREE.Mesh(new THREE.SphereGeometry(1500, 32, 16), new THREE.ShaderMaterial({
+    side: THREE.BackSide, depthWrite: false, fog: false,
+    uniforms: {
+      top: { value: new THREE.Color('#4a82c4') }, horizon: { value: new THREE.Color('#c3d9ea') },
+      ground: { value: new THREE.Color('#2f332d') }, sunDir: { value: sunDir }, sunCol: { value: new THREE.Color('#fff2dc') },
+    },
+    vertexShader: `varying vec3 vDir;
+      void main() { vDir = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+    fragmentShader: `uniform vec3 top; uniform vec3 horizon; uniform vec3 ground; uniform vec3 sunDir; uniform vec3 sunCol;
+      varying vec3 vDir;
+      void main() {
+        vec3 d = normalize(vDir);
+        vec3 c = d.y > 0.0 ? mix(horizon, top, pow(min(d.y * 1.6, 1.0), 0.6)) : mix(horizon, ground, min(-d.y * 6.0, 1.0));
+        float s = max(dot(d, sunDir), 0.0);
+        c += sunCol * (smoothstep(0.9993, 0.9997, s) * 3.0 + pow(s, 24.0) * 0.1);
+        gl_FragColor = vec4(c, 1.0);
+        #include <tonemapping_fragment>
+        #include <colorspace_fragment>
+      }`,
+  }));
+  sky.frustumCulled = false;
+  sky.renderOrder = -1;
+  scene.add(sky);
+}
+scene.add(new THREE.HemisphereLight(0xcfe2f5, 0xa49d8c, 1.1), new THREE.AmbientLight(0xffffff, 0.27));
+const sun = new THREE.DirectionalLight(0xfff1de, 2.8);
+sun.castShadow = true;
+sun.shadow.mapSize.setScalar(IS_TOUCH ? 2048 : 4096);
+Object.assign(sun.shadow.camera, { left: -95, right: 95, top: 95, bottom: -95, near: 1, far: 450 });
+sun.shadow.bias = -0.0003;
+sun.shadow.normalBias = 0.04;
+sun.target.position.set(0, 0, 42);
+sun.position.copy(sun.target.position).addScaledVector(sunDir, 220);
+scene.add(sun, sun.target);
+
+// --------------------------------------------------------------------------
+// het klooster uit het model, met gaten waar de baan erdoor gaat
+const M = makeMaterials();
+M.bulb.emissiveIntensity = 1.6;
+const klooster = buildKlooster(M);
+const kapel = buildKapel(M);
+const ext = buildExterior(M);
+const HEDGE_CUT = { min: [35.9, 0.05, -4.5], max: [46.1, 1.6, -3.5] };   // haag voor het oostelijke hoekblok
+const GATE_CUT = { min: [-45.68, 0.13, -5.3], max: [-40.32, 2.2, -4.7] }; // zijpoortje: hekvak tussen de pijlers op x = -46 en -40
+cutOut(klooster.group, [...INSIDE_CUTS, ...OPENING_CUTS]);
+cutOut(ext.group, [HEDGE_CUT, GATE_CUT]);
+world.colliders = subtractColliders(world.colliders, [...OPENING_CUTS, HEDGE_CUT, GATE_CUT]);
+const interior = buildInterior(M);
+scene.add(klooster.group, kapel.group, ext.group, interior.group);
+if (DBG.includes('noshadow')) renderer.shadowMap.enabled = false;
+if (DBG.includes('nolights')) for (const l of interior.lights) l.visible = false;
+if (DBG.includes('noklooster')) klooster.group.visible = false;
+
+const track = new Track(M);
+scene.add(track.group);
+const S = track.S;
+const grid = new ColliderGrid(world.colliders);
+
+// --------------------------------------------------------------------------
+// karts
+const DRIVERS = [
+  { name: 'Jij', color: '#c4141e', suit: '#f3f0ea', hat: '#c4141e' },
+  { name: 'Pater Jan', color: '#2457c5', suit: '#1a1a1c', hat: '#1a1a1c' },
+  { name: 'Broeder Kees', color: '#2f9a45', suit: '#5b4636', hat: '#d8c79a' },
+  { name: 'Zuster Anna', color: '#e7b416', suit: '#1f2a44', hat: '#f4f4f4' },
+];
+const karts = DRIVERS.map((d) => new Kart(d));
+for (const k of karts) scene.add(k.mesh);
+const player = karts[0];
+const ais = karts.slice(1).map((k, i) => new AIDriver(k, { skill: [0.97, 0.94, 0.91][i], lane: [-0.6, 0.6, 0][i], seed: i + 1 }));
+if (TEST) ais.unshift(new AIDriver(player, { skill: 0.97, lane: 0.3, seed: 9 }));
+
+function grid0() {
+  // startopstelling achter de streep, twee aan twee
+  karts.forEach((k, i) => {
+    const order = TEST ? i : [3, 2, 1, 0][i];             // de speler start achteraan
+    k.place(track, 0, (order % 2 ? -1.8 : 1.8), 4 + order * 3.2);
+    k.dist = k.idx - S.N;
+    k.lapTimes = []; k.lapStart = 0; k.finished = false; k.finishTime = 0; k.item = null;
+    k.respawns = 0; k.wallHits = 0; k.stuckMax = 0;
+  });
+}
+
+// --------------------------------------------------------------------------
+// itemblokken en bananen
+const items = [];
+{
+  const c = document.createElement('canvas');
+  c.width = c.height = 128;
+  const g = c.getContext('2d');
+  const gr = g.createLinearGradient(0, 0, 128, 128);
+  gr.addColorStop(0, '#ff5f6d'); gr.addColorStop(0.5, '#ffc371'); gr.addColorStop(1, '#5ee7df');
+  g.fillStyle = gr; g.fillRect(0, 0, 128, 128);
+  g.fillStyle = 'rgba(255,255,255,.85)'; g.fillRect(6, 6, 116, 116);
+  g.fillStyle = gr; g.fillRect(14, 14, 100, 100);
+  g.font = 'bold 84px "Segoe UI", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillStyle = '#fff'; g.fillText('?', 64, 70);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const mat = new THREE.MeshStandardMaterial({ map: tex, transparent: true, opacity: 0.88, emissive: '#ffffff', emissiveMap: tex, emissiveIntensity: 0.35, roughness: 0.3 });
+  const geo = new THREE.BoxGeometry(0.85, 0.85, 0.85);
+  for (const j of track.itemRows) {
+    const room = S.hw[j] - 0.9;
+    for (const f of [-0.75, -0.25, 0.25, 0.75]) {
+      const m = new THREE.Mesh(geo, mat);
+      track.point(j, f * room * 2 * 0.75, m.position);
+      m.position.y += 0.95;
+      m.castShadow = true;
+      scene.add(m);
+      items.push({ mesh: m, timer: 0, ph: Math.random() * 6 });
+    }
+  }
+}
+const bananas = [];
+const bananaMat = new THREE.MeshStandardMaterial({ color: '#f2d12e', roughness: 0.5 });
+const bananaGeo = new THREE.TorusGeometry(0.28, 0.1, 8, 14, Math.PI * 1.2);
+const itemWorld = {
+  dropBanana(k) {
+    const [fx, fz] = k.fwd;
+    const m = new THREE.Mesh(bananaGeo, bananaMat);
+    m.position.set(k.pos.x - fx * 1.9, (k.floorY ?? k.pos.y) + 0.12, k.pos.z - fz * 1.9);
+    m.rotation.set(Math.PI / 2, 0, Math.random() * 6);
+    m.castShadow = true;
+    scene.add(m);
+    bananas.push({ mesh: m, owner: k, age: 0 });
+  },
+};
+
+// --------------------------------------------------------------------------
+// HUD
+const $ = (id) => document.getElementById(id);
+const el = {
+  loading: $('loading'), menu: $('menu'), hud: $('hud'), lap: $('lap'), pos: $('pos'), time: $('time'),
+  best: $('best'), speed: $('speed'), zone: $('zone'), item: $('item'), msg: $('msg'), results: $('results'),
+  resultsList: $('results-list'), minimap: $('minimap'), pause: $('pause'),
+};
+const fmt = (t) => {
+  const m = Math.floor(t / 60), s = t - m * 60;
+  return `${m}:${s.toFixed(2).padStart(5, '0')}`;
+};
+let bestLap = null;
+try { const v = parseFloat(localStorage.getItem('rhk-best-lap')); if (v > 0) bestLap = v; } catch { /* geen opslag */ }
+let msgTimer = 0;
+function message(text, t = 1.6, big = false) {
+  el.msg.textContent = text;
+  el.msg.className = big ? 'show big' : 'show';
+  msgTimer = t;
+}
+
+// minimap: voetafdrukken uit het model, de baan en de karts
+const mm = { W: 220, H: 230, x0: -52, x1: 52, z0: -22, z1: 106 };
+mm.s = Math.min(mm.W / (mm.x1 - mm.x0), mm.H / (mm.z1 - mm.z0));
+const mmBg = document.createElement('canvas');
+{
+  mmBg.width = mm.W; mmBg.height = mm.H;
+  const c = mmBg.getContext('2d');
+  const X = (x) => (x - mm.x0) * mm.s, Z = (z) => (z - mm.z0) * mm.s;
+  c.fillStyle = 'rgba(70,100,50,.35)';
+  c.fillRect(X(-72), Z(-5), (144) * mm.s, 127 * mm.s);
+  for (const f of world.footprints) {
+    c.fillStyle = f.fill;
+    c.beginPath();
+    f.pts.forEach(([x, z], i) => (i ? c.lineTo(X(x), Z(z)) : c.moveTo(X(x), Z(z))));
+    c.closePath();
+    c.fill();
+  }
+  c.lineCap = c.lineJoin = 'round';
+  for (const [w, col] of [[6, 'rgba(20,20,22,.85)'], [3, '#e9e4da']]) {
+    c.lineWidth = w;
+    c.strokeStyle = col;
+    c.beginPath();
+    for (let j = 0; j <= S.N; j++) {
+      const k = j % S.N;
+      j ? c.lineTo(X(S.x[k]), Z(S.z[k])) : c.moveTo(X(S.x[k]), Z(S.z[k]));
+    }
+    c.stroke();
+  }
+  // binnen-stuk gestippeld in rood
+  c.setLineDash([3, 3]);
+  c.strokeStyle = '#c4141e';
+  c.lineWidth = 3;
+  c.beginPath();
+  let on = false;
+  for (let j = 0; j < S.N; j++) {
+    if (S.indoor[j]) { on ? c.lineTo(X(S.x[j]), Z(S.z[j])) : c.moveTo(X(S.x[j]), Z(S.z[j])); on = true; } else on = false;
+  }
+  c.stroke();
+  c.setLineDash([]);
+  c.fillStyle = '#fff';
+  c.fillRect(X(S.x[0]) - 1, Z(S.z[0]) - 6, 3, 12);
+}
+const mmCtx = el.minimap.getContext('2d');
+function drawMinimap() {
+  mmCtx.clearRect(0, 0, mm.W, mm.H);
+  mmCtx.drawImage(mmBg, 0, 0);
+  for (const k of [...karts].reverse()) {
+    const x = (k.pos.x - mm.x0) * mm.s, z = (k.pos.z - mm.z0) * mm.s;
+    mmCtx.fillStyle = k.color;
+    mmCtx.strokeStyle = k === player ? '#fff' : 'rgba(0,0,0,.7)';
+    mmCtx.lineWidth = k === player ? 2.5 : 1.5;
+    mmCtx.beginPath();
+    mmCtx.arc(x, z, k === player ? 5 : 4, 0, Math.PI * 2);
+    mmCtx.fill();
+    mmCtx.stroke();
+  }
+}
+
+// --------------------------------------------------------------------------
+// besturing
+const keys = new Set();
+let camMode = 0;
+let paused = false;
+addEventListener('keydown', (e) => {
+  if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) e.preventDefault();
+  if (e.repeat) return;
+  keys.add(e.code);
+  if (state === 'race' && (e.code === 'KeyE' || e.code === 'KeyX' || e.code === 'ControlLeft')) player.useItem(itemWorld);
+  if (state === 'race' && e.code === 'KeyR') player.respawn(track);
+  if (e.code === 'KeyC') camMode = (camMode + 1) % 3;
+  if ((e.code === 'KeyP' || e.code === 'Escape') && (state === 'race' || state === 'countdown')) setPaused(!paused);
+});
+addEventListener('keyup', (e) => keys.delete(e.code));
+addEventListener('blur', () => { keys.clear(); if (state === 'race') setPaused(true); });
+function setPaused(p) {
+  paused = p;
+  el.pause.hidden = !p;
+}
+// aanraakbesturing (telefoon, tablet)
+const touch = IS_TOUCH ? new TouchControls() : null;
+if (touch) document.body.classList.add('touch');
+
+let steerSmooth = 0;
+function playerInput(dt) {
+  const k = (...c) => c.some((x) => keys.has(x));
+  let throttle = (k('ArrowUp', 'KeyW') ? 1 : 0) - (k('ArrowDown', 'KeyS') ? 1 : 0);
+  let target = (k('ArrowRight', 'KeyD') ? 1 : 0) - (k('ArrowLeft', 'KeyA') ? 1 : 0);
+  let drift = k('Space', 'ShiftLeft', 'ShiftRight');
+  if (touch) {
+    if (!throttle) throttle = touch.throttle;
+    if (!target) target = touch.steer;
+    drift = drift || touch.drift;
+  }
+  steerSmooth += (target - steerSmooth) * Math.min(1, dt * (target === 0 ? 14 : 9));
+  return { throttle, steer: steerSmooth, drift };
+}
+
+// --------------------------------------------------------------------------
+// race
+let state = 'menu';
+let raceTime = 0;
+let countdown = 0;
+let doneTimer = 0;
+
+function startRace() {
+  grid0();
+  for (const it of items) { it.timer = 0; it.mesh.visible = true; }
+  for (const b of bananas) scene.remove(b.mesh);
+  bananas.length = 0;
+  raceTime = 0;
+  countdown = 3.2;
+  state = 'countdown';
+  el.menu.hidden = true;
+  el.results.hidden = true;
+  el.hud.hidden = false;
+  setPaused(false);
+  camSnap = true;
+}
+
+function step(dt) {
+  if (state === 'countdown') {
+    const before = Math.ceil(countdown - 0.2);
+    countdown -= dt;
+    const now = Math.ceil(countdown - 0.2);
+    if (now !== before && now > 0) message(String(now), 0.9, true);
+    if (countdown <= 0.2) { state = 'race'; message('START!', 1.0, true); }
+    for (const k of karts) k.syncMesh(track, dt);
+    return;
+  }
+  if (state !== 'race' && state !== 'done') return;
+  raceTime += dt;
+
+  for (const k of karts) {
+    let input;
+    const ai = ais.find((a) => a.kart === k);
+    if (ai) input = ai.think(dt, track, k === player ? null : player);
+    else if (k.finished) input = { throttle: 0, steer: 0, drift: false };
+    else input = playerInput(dt);
+    k.steerVis = -input.steer * 0.4;
+    if (input.item) k.useItem(itemWorld);
+    const prev = k.idx;
+    k.update(dt, input, track, grid);
+    k.stuckMax = Math.max(k.stuckMax ?? 0, k.stuck);
+
+    // afgelegde weg en rondes
+    let d = k.idx - prev;
+    if (d < -S.N / 2) d += S.N;
+    if (d > S.N / 2) d -= S.N;
+    const lapBefore = Math.floor(k.dist / S.N);
+    k.dist += d;
+    const lapNow = Math.floor(k.dist / S.N);
+    if (lapNow > lapBefore && lapNow >= 1 && lapNow > k.lapTimes.length && !k.finished) {
+      const t = raceTime - (k.lapStart ?? 0);
+      k.lapTimes.push(t);
+      k.lapStart = raceTime;
+      if (k === player) {
+        if (bestLap === null || t < bestLap) {
+          bestLap = t;
+          try { localStorage.setItem('rhk-best-lap', String(t)); } catch { /* geen opslag */ }
+        }
+        if (lapNow === LAPS - 1) message('Laatste ronde!', 2);
+        else if (lapNow < LAPS) message(`Ronde ${lapNow + 1}`, 1.5);
+      }
+      if (lapNow >= LAPS) {
+        k.finished = true;
+        k.finishTime = raceTime;
+        if (k === player) { message('FINISH!', 2.5, true); state = 'done'; doneTimer = 0; }
+      }
+    }
+
+    // boostpads
+    if (k.grounded) {
+      for (const p of track.pads) {
+        let dj = k.idx - p.j;
+        if (dj < -S.N / 2) dj += S.N;
+        if (dj >= -3 && dj <= 3 && Math.abs(k.lat) < 1.2) k.boost = Math.max(k.boost, 1.0);
+      }
+    }
+  }
+
+  // karts tegen elkaar
+  for (let a = 0; a < karts.length; a++) for (let b = a + 1; b < karts.length; b++) {
+    const A = karts[a], B = karts[b];
+    const dx = B.pos.x - A.pos.x, dz = B.pos.z - A.pos.z, dy = B.pos.y - A.pos.y;
+    const d = Math.hypot(dx, dz);
+    if (d < 1.5 && d > 1e-4 && Math.abs(dy) < 1) {
+      const nx = dx / d, nz = dz / d, push = (1.5 - d) / 2;
+      A.pos.x -= nx * push; A.pos.z -= nz * push;
+      B.pos.x += nx * push; B.pos.z += nz * push;
+      const rel = (B.vx - A.vx) * nx + (B.vz - A.vz) * nz;
+      if (rel < 0) {
+        A.vx += nx * rel * 0.5; A.vz += nz * rel * 0.5;
+        B.vx -= nx * rel * 0.5; B.vz -= nz * rel * 0.5;
+      }
+    }
+  }
+
+  // itemblokken
+  for (const it of items) {
+    if (it.timer > 0) { it.timer -= dt; if (it.timer <= 0) it.mesh.visible = true; continue; }
+    for (const k of karts) {
+      if (k.pos.distanceToSquared(it.mesh.position) < 1.6 * 1.6 + 0.9) {
+        it.timer = 4;
+        it.mesh.visible = false;
+        if (!k.item) {
+          const rank = karts.filter((o) => o.dist > k.dist).length;
+          k.item = Math.random() < 0.3 + rank * 0.18 ? 'paddenstoel' : 'banaan';
+        }
+        break;
+      }
+    }
+  }
+  // bananen
+  for (let i = bananas.length - 1; i >= 0; i--) {
+    const b = bananas[i];
+    b.age += dt;
+    for (const k of karts) {
+      if (b.owner === k && b.age < 0.6) continue;
+      if (k.pos.distanceToSquared(b.mesh.position) < 1.0 && k.spin <= 0) {
+        k.spin = 0.9;
+        k.vx *= 0.35; k.vz *= 0.35;
+        if (k === player) message('Uitgegleden!', 1);
+        scene.remove(b.mesh);
+        bananas.splice(i, 1);
+        break;
+      }
+    }
+  }
+
+  if (state === 'done') {
+    doneTimer += dt;
+    if (doneTimer > 3 && !TEST) showResults();
+  }
+}
+
+function standings() {
+  return [...karts].sort((a, b) => {
+    if (a.finished && b.finished) return a.finishTime - b.finishTime;
+    if (a.finished !== b.finished) return a.finished ? -1 : 1;
+    return b.dist - a.dist;
+  });
+}
+
+let resultsShown = false;
+function showResults() {
+  if (resultsShown) return;
+  resultsShown = true;
+  const list = standings();
+  el.resultsList.innerHTML = list.map((k, i) => {
+    const t = k.finished ? fmt(k.finishTime) : 'onderweg';
+    return `<li class="${k === player ? 'me' : ''}"><span class="place">${i + 1}</span><span class="dot" style="background:${k.color}"></span><span class="name">${k.name}</span><span class="t">${t}</span></li>`;
+  }).join('');
+  const lapsTxt = player.lapTimes.map((t, i) => `ronde ${i + 1}: ${fmt(t)}`).join(' · ');
+  $('results-laps').textContent = lapsTxt + (bestLap ? ` · beste ronde ooit: ${fmt(bestLap)}` : '');
+  el.results.hidden = false;
+  if (touch) touch.el.hidden = true;
+}
+
+// --------------------------------------------------------------------------
+// camera
+let camSnap = true;
+const camPos = new THREE.Vector3();
+const camLook = new THREE.Vector3();
+let camYaw = 0;
+let indoorBlend = 0;
+const tmpA = new THREE.Vector3(), tmpB = new THREE.Vector3(), tmpC = new THREE.Vector3();
+
+function updateCamera(dt) {
+  const k = player;
+  // binnen (en net na de sprong) volgt de camera de baan, zodat hij niet door muren gaat
+  let inside = false;
+  for (let s = 0; s <= 24; s += 3) if (S.indoor[(k.idx - s + S.N) % S.N]) inside = true;
+  indoorBlend += ((inside ? 1 : 0) - indoorBlend) * Math.min(1, dt * 4);
+  if (camSnap) indoorBlend = inside ? 1 : 0;
+
+  let dyaw = k.h - camYaw;
+  dyaw = Math.atan2(Math.sin(dyaw), Math.cos(dyaw));
+  camYaw += dyaw * Math.min(1, dt * (camSnap ? 1e3 : 5));
+
+  const far = camMode === 1;
+  const dist = far ? 8.5 : 5.6, height = far ? 3.6 : 2.3;
+  const fx = Math.sin(camYaw), fz = Math.cos(camYaw);
+  // buiten: recht achter de kart
+  tmpA.set(k.pos.x - fx * dist, k.pos.y + height, k.pos.z - fz * dist);
+  // binnen: een stuk terug langs de baan
+  const back = Math.round(4.2 / S.step);
+  const jb = (k.idx - back + S.N) % S.N;
+  track.point(jb, k.lat * 0.6, tmpB);
+  tmpB.y = Math.max(S.floor[jb] + 1.75, k.pos.y + 1.45);
+  if (camMode === 2) {
+    // achteruitkijken
+    tmpA.set(k.pos.x + fx * 4.5, k.pos.y + 1.8, k.pos.z + fz * 4.5);
+    tmpB.copy(tmpA);
+  }
+  tmpC.copy(tmpA).lerp(tmpB, indoorBlend);
+  if (camSnap) camPos.copy(tmpC);
+  else camPos.lerp(tmpC, 1 - Math.exp(-dt * (indoorBlend > 0.5 ? 12 : 7)));
+
+  const lookAhead = camMode === 2 ? -4 : 4;
+  tmpA.set(k.pos.x + Math.sin(k.h) * lookAhead, k.pos.y + 0.9, k.pos.z + Math.cos(k.h) * lookAhead);
+  if (camSnap) camLook.copy(tmpA); else camLook.lerp(tmpA, 1 - Math.exp(-dt * 10));
+  camera.position.copy(camPos);
+  camera.lookAt(camLook);
+  const fov = 70 + (k.boost > 0 ? 8 : 0) + Math.min(6, k.speed * 0.2);
+  camera.fov += (fov - camera.fov) * Math.min(1, dt * 4);
+  camera.updateProjectionMatrix();
+  camSnap = false;
+}
+
+// --------------------------------------------------------------------------
+function updateHud() {
+  const lap = Math.min(LAPS, Math.max(1, Math.floor(player.dist / S.N) + 1));
+  el.lap.innerHTML = `<small>Ronde</small> ${lap}<small>/${LAPS}</small>`;
+  const place = standings().indexOf(player) + 1;
+  el.pos.innerHTML = `${place}<small>${place === 1 ? 'ste' : 'de'}</small>`;
+  el.time.textContent = fmt(raceTime);
+  el.best.textContent = bestLap ? `beste ronde ${fmt(bestLap)}` : '';
+  el.speed.innerHTML = `${Math.round(player.speed * 3.6)}<small> km/u</small>`;
+  el.zone.textContent = track.zone(player.idx);
+  el.item.className = player.item ? 'has ' + player.item : '';
+  if (touch) $('t-item').className = player.item ?? '';
+  el.item.title = player.item ?? '';
+  drawMinimap();
+}
+
+function animate(dt, t) {
+  for (const it of items) {
+    it.mesh.rotation.set(0.4, t * 1.6 + it.ph, 0.2);
+    it.mesh.position.y += Math.sin(t * 2.4 + it.ph) * 0.004;
+  }
+  for (const p of track.pads) p.mesh.material.color.setHSL(0, 0, 0.85 + 0.15 * Math.sin(t * 8));
+  if (msgTimer > 0) { msgTimer -= dt; if (msgTimer <= 0) el.msg.className = ''; }
+}
+
+// --------------------------------------------------------------------------
+el.loading.hidden = true;
+$('btn-start').addEventListener('click', () => { touch?.begin(); resultsShown = false; startRace(); });
+$('btn-again').addEventListener('click', () => { touch?.begin(); resultsShown = false; startRace(); });
+$('btn-resume').addEventListener('click', () => setPaused(false));
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+// menu-achtergrond: de camera draait langzaam om het klooster
+function menuCamera(t) {
+  const a = t * 0.06 + 2.4;
+  camera.position.set(Math.sin(a) * 85, 38, 40 + Math.cos(a) * 85);
+  camera.lookAt(0, 6, 34);
+  camera.fov = 50;
+  camera.updateProjectionMatrix();
+}
+
+grid0();
+const clock = new THREE.Clock();
+let elapsed = 0;
+
+if (TEST) runTest();
+else if (HASH.startsWith('view=') || HASH.startsWith('cam=')) viewMode();
+else renderer.setAnimationLoop(frame);
+
+function frame() {
+  const dt = Math.min(0.05, clock.getDelta());
+  elapsed += dt;
+  if (touch) {
+    if (touch.takePause() && (state === 'race' || state === 'countdown')) setPaused(!paused);
+    if (touch.takeItem() && state === 'race' && !paused) player.useItem(itemWorld);
+  }
+  if (!paused) {
+    // vaste stapjes voor stabiele fysica
+    const n = Math.ceil(dt / (1 / 120));
+    for (let i = 0; i < n; i++) step(dt / n);
+  }
+  animate(dt, elapsed);
+  if (state === 'menu') menuCamera(elapsed);
+  else { updateCamera(paused ? 0 : dt); updateHud(); }
+  renderer.render(scene, camera);
+}
+
+// --------------------------------------------------------------------------
+// #view=<punt> of #cam=x,y,z,tx,ty,tz: vast beeld, voor schermafdrukken
+function viewMode() {
+  el.menu.hidden = true;
+  el.hud.hidden = false;
+  if (touch) { touch.el.hidden = false; document.body.classList.add('touching'); }
+  if (HASH.startsWith('view=')) {
+    const [wp, lat] = HASH.slice(5).split(',').map(Number);
+    if (Number.isNaN(wp)) grid0();                    // #view=start: de startopstelling
+    else {
+      player.place(track, track.firstOf(wp), lat || 0);
+      karts.slice(1).forEach((k, i) => k.place(track, track.firstOf(wp), (i - 1) * 1.6, 5 + i * 3));
+    }
+    state = 'race';
+    camSnap = true;
+    updateCamera(0.016);
+    updateHud();
+  } else {
+    const v = HASH.slice(4).split(',').map(Number);
+    camera.position.set(v[0], v[1], v[2]);
+    camera.lookAt(v[3], v[4], v[5]);
+  }
+  renderer.setAnimationLoop(() => {
+    animate(0.016, (elapsed += 0.016));
+    renderer.render(scene, camera);
+  });
+}
+
+// --------------------------------------------------------------------------
+// #test: race zonder beeld met vier computerkarts, plus een controle van de baan
+function runTest() {
+  const report = { lapLength: +S.total.toFixed(1), samples: S.N, blocked: [], karts: [] };
+  // baancontrole: raakt de middenlijn buiten ergens een botsingsbox?
+  for (let j = 0; j < S.N; j++) {
+    if (S.indoor[j] || S.jump[j]) continue;
+    for (const lat of [-1, 0, 1]) {
+      const l = lat * Math.max(0, S.hw[j] - 1.2);
+      const x = S.x[j] - S.tz[j] * l, z = S.z[j] + S.tx[j] * l;
+      for (const c of grid.near(x, z)) {
+        if (c.y0 > 1.2 || c.y1 < 0.1) continue;
+        if (x > c.x0 - 0.7 && x < c.x1 + 0.7 && z > c.z0 - 0.7 && z < c.z1 + 0.7) {
+          report.blocked.push({ j, seg: S.seg[j], lat: +l.toFixed(1), x: +x.toFixed(1), z: +z.toFixed(1), box: [c.x0, c.z0, c.x1, c.z1].map((v) => +v.toFixed(2)) });
+          break;
+        }
+      }
+    }
+  }
+  startRace();
+  countdown = 0;
+  state = 'race';
+  const dt = 1 / 120;
+  let t = 0;
+  const zoneTime = {};
+  function chunk() {
+    for (let i = 0; i < 6000 && t < 320; i++) {
+      step(dt);
+      t += dt;
+      const z = track.zone(player.idx);
+      zoneTime[z] = (zoneTime[z] ?? 0) + dt;
+      if (karts.every((k) => k.finished)) { t = 1e9; break; }
+    }
+    if (t < 320) { setTimeout(chunk, 0); return; }
+    report.simTime = +raceTime.toFixed(1);
+    report.karts = karts.map((k) => ({
+      name: k.name, finished: k.finished, time: +k.finishTime.toFixed(2), laps: k.lapTimes.map((v) => +v.toFixed(2)),
+      respawns: k.respawns, where: k.respawnLog, wallHits: k.wallHits, stuckMax: +(k.stuckMax ?? 0).toFixed(2), dist: k.dist,
+    }));
+    report.zoneTimeFirstKart = Object.fromEntries(Object.entries(zoneTime).map(([a, b]) => [a, +b.toFixed(1)]));
+    report.colliders = world.colliders.length;
+    const pre = document.createElement('pre');
+    pre.id = 'report';
+    pre.textContent = JSON.stringify(report, null, 1);
+    document.body.innerHTML = '';
+    document.body.appendChild(pre);
+    document.title = 'DONE';
+  }
+  chunk();
+}
+
+</script>
+</body>
+</html>

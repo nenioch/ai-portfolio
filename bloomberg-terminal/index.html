@@ -1,0 +1,1446 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Market Terminal</title>
+  <style>
+:root {
+  --bg: #000;
+  --panel: #060606;
+  --line: #262626;
+  --amber: #ffa028;
+  --amber-dim: #8a5714;
+  --text: #e4e4e4;
+  --muted: #7d7d7d;
+  --green: #00e676;
+  --red: #ff3d3d;
+  --blue: #4da3ff;
+  --yellow: #ffd400;
+  --lamp-off: #1c1c1c;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font: 12px/1.35 Consolas, "IBM Plex Mono", "Courier New", monospace;
+}
+
+body { display: flex; flex-direction: column; overflow: hidden; }
+
+.up { color: var(--green); }
+.dn { color: var(--red); }
+.muted { color: var(--muted); }
+.num { text-align: right; font-variant-numeric: tabular-nums; }
+.spacer { flex: 1; }
+
+/* ---------- top bar ---------- */
+.topbar {
+  display: flex; align-items: center; gap: 14px;
+  padding: 6px 10px;
+  background: #0b0b0b;
+  border-bottom: 1px solid var(--amber-dim);
+}
+.brand { color: var(--amber); font-weight: 700; letter-spacing: 2px; font-size: 14px; white-space: nowrap; }
+.brand span { color: #000; background: var(--amber); padding: 0 4px; margin-left: 4px; }
+
+.cmd {
+  flex: 1; max-width: 520px;
+  display: flex; align-items: center;
+  border: 1px solid var(--amber-dim); background: #000;
+}
+.cmd .prompt { color: var(--amber); padding: 0 6px; }
+.cmd input {
+  flex: 1; min-width: 0; background: transparent; border: 0; outline: 0;
+  color: var(--yellow); font: inherit; font-size: 13px; padding: 4px 0;
+  text-transform: uppercase;
+}
+.cmd input::placeholder { color: #555; text-transform: none; }
+.go {
+  background: #0a8f3c; color: #fff; border: 0; font: inherit; font-weight: 700;
+  padding: 4px 12px; cursor: pointer;
+}
+.go:hover { background: #0cb04a; }
+
+.status { display: flex; align-items: center; gap: 14px; color: var(--muted); white-space: nowrap; }
+.stat { display: inline-flex; align-items: center; gap: 5px; }
+.clocks { display: flex; gap: 12px; }
+.clocks b { color: var(--amber); font-weight: 400; margin-right: 4px; }
+
+/* ---------- lamps ---------- */
+.lamp {
+  display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+  background: var(--lamp-off);
+  box-shadow: inset 0 0 2px #000;
+  flex: none;
+}
+.lamp.on-g { background: var(--green); box-shadow: 0 0 6px var(--green); }
+.lamp.on-r { background: var(--red); box-shadow: 0 0 6px var(--red); }
+.lamp.blink { animation: blink 1s steps(2, start) infinite; }
+.lamp.g { animation: lampG .7s ease-out; }
+.lamp.r { animation: lampR .7s ease-out; }
+
+@keyframes blink { to { visibility: hidden; } }
+@keyframes lampG {
+  0%   { background: #3dff9a; box-shadow: 0 0 10px 3px var(--green); }
+  100% { background: var(--lamp-off); box-shadow: none; }
+}
+@keyframes lampR {
+  0%   { background: #ff6b6b; box-shadow: 0 0 10px 3px var(--red); }
+  100% { background: var(--lamp-off); box-shadow: none; }
+}
+
+/* cel-flash bij koerswijziging */
+.fu { animation: fu .8s ease-out; }
+.fd { animation: fd .8s ease-out; }
+@keyframes fu { 0% { background: rgba(0, 230, 118, .55); color: #fff; } 100% { background: transparent; } }
+@keyframes fd { 0% { background: rgba(255, 61, 61, .55); color: #fff; } 100% { background: transparent; } }
+
+/* ---------- ticker tape ---------- */
+.tape {
+  overflow: hidden; white-space: nowrap;
+  background: #050505; border-bottom: 1px solid var(--line);
+  padding: 3px 0;
+}
+.tape-track { display: inline-block; animation: tape 60s linear infinite; }
+.tape:hover .tape-track { animation-play-state: paused; }
+.ti { margin-right: 28px; cursor: pointer; }
+.ti b { color: var(--amber); font-weight: 400; margin-right: 6px; }
+@keyframes tape { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+
+/* ---------- function keys ---------- */
+.fkeys {
+  display: flex; align-items: center; gap: 4px; flex-wrap: wrap;
+  padding: 4px 10px; background: #0b0b0b; border-bottom: 1px solid var(--line);
+}
+.fk-label { color: var(--muted); margin: 0 4px 0 2px; }
+.fk-sep { width: 1px; height: 16px; background: var(--line); margin: 0 8px; }
+.fk {
+  background: #1a1a1a; color: var(--amber); border: 1px solid #333;
+  font: inherit; padding: 2px 8px; cursor: pointer;
+}
+.fk:hover { border-color: var(--amber-dim); }
+.fk.active { background: var(--amber); color: #000; border-color: var(--amber); font-weight: 700; }
+
+/* ---------- grid ---------- */
+.grid {
+  flex: 1; min-height: 0;
+  display: grid; gap: 1px; background: var(--line);
+  grid-template-columns: minmax(300px, 22%) 1fr minmax(290px, 21%);
+  grid-template-rows: 1fr 290px;
+  grid-template-areas:
+    "watch chart book"
+    "news  anal  trades";
+}
+.p-watch  { grid-area: watch; }
+.p-chart  { grid-area: chart; }
+.p-book   { grid-area: book; }
+.p-news   { grid-area: news; }
+.p-anal   { grid-area: anal; }
+.p-trades { grid-area: trades; }
+
+.panel { background: var(--panel); display: flex; flex-direction: column; min-height: 0; min-width: 0; }
+.ph {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 3px 8px; background: #111; border-bottom: 1px solid var(--line);
+  color: var(--amber); font-weight: 700; white-space: nowrap; overflow: hidden;
+}
+.pb { flex: 1; min-height: 0; }
+.scroll { overflow-y: auto; }
+.scroll::-webkit-scrollbar { width: 6px; }
+.scroll::-webkit-scrollbar-thumb { background: #333; }
+
+/* ---------- watchlist ---------- */
+#watch { width: 100%; border-collapse: collapse; }
+#watch th {
+  position: sticky; top: 0; background: #0d0d0d; color: var(--muted);
+  font-weight: 400; text-align: left; padding: 3px 6px; border-bottom: 1px solid var(--line);
+}
+#watch th.num { text-align: right; }
+#watch td { padding: 3px 6px; border-bottom: 1px solid #111; white-space: nowrap; }
+#watch tr { cursor: pointer; }
+#watch tbody tr:hover { background: #121212; }
+#watch tr.sel { background: #1e1608; box-shadow: inset 2px 0 0 var(--amber); }
+#watch .sym { color: var(--amber); }
+#watch .sym small { color: var(--muted); margin-left: 5px; font-size: 10px; }
+#watch td:first-child { width: 14px; padding-right: 0; }
+
+/* ---------- chart ---------- */
+.quote { justify-content: flex-start; gap: 14px; font-size: 13px; }
+.q-sym { color: #000; background: var(--amber); padding: 0 6px; }
+.q-name { color: var(--text); font-weight: 400; overflow: hidden; text-overflow: ellipsis; }
+.q-last { color: #fff; font-size: 15px; padding: 0 4px; }
+.chart-wrap { position: relative; flex: 1; min-height: 0; }
+.chart-wrap canvas { position: absolute; inset: 0; cursor: crosshair; }
+.readout {
+  position: absolute; left: 8px; top: 6px; pointer-events: none;
+  font-size: 11px; color: var(--muted); background: rgba(0, 0, 0, .6); padding: 1px 4px;
+}
+.readout b { color: var(--text); font-weight: 400; margin-right: 8px; }
+
+/* ---------- orderbook ---------- */
+.book-head, .brow, .trade-head, .trow {
+  display: grid; grid-template-columns: 16px 1fr 1fr 1fr; align-items: center;
+  padding: 0 8px; gap: 6px;
+}
+.book-head, .trade-head { color: var(--muted); padding-top: 3px; padding-bottom: 3px; border-bottom: 1px solid var(--line); }
+.trade-head, .trow { grid-template-columns: 1fr 1fr 1fr 16px; }
+.book { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; min-height: 0; overflow: hidden; }
+#bids { justify-content: flex-start; }
+.brow { position: relative; height: 18px; font-variant-numeric: tabular-nums; }
+.brow > * { position: relative; }
+.brow .sz, .brow .cum { text-align: right; }
+.brow .depth { position: absolute; right: 0; top: 1px; bottom: 1px; transition: width .25s; }
+.brow.ask .depth { background: rgba(255, 61, 61, .14); }
+.brow.bid .depth { background: rgba(0, 230, 118, .12); }
+.brow.ask .px { color: var(--red); }
+.brow.bid .px { color: var(--green); }
+.brow .cum { color: var(--muted); }
+.brow.best { font-weight: 700; }
+
+.spread {
+  display: flex; justify-content: space-between; padding: 3px 8px;
+  border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+  background: #0e0e0e; color: var(--amber);
+}
+.imbalance { display: flex; align-items: center; gap: 8px; padding: 5px 8px; border-top: 1px solid var(--line); }
+.imb-bar { flex: 1; height: 8px; background: var(--red); position: relative; }
+.imb-fill { position: absolute; left: 0; top: 0; bottom: 0; background: var(--green); transition: width .3s; }
+
+/* ---------- trades ---------- */
+.trow { height: 17px; font-variant-numeric: tabular-nums; border-bottom: 1px solid #0d0d0d; }
+.trow span:nth-child(2), .trow span:nth-child(3) { text-align: right; }
+.trow span:first-child { color: var(--muted); }
+.trow.buy span:nth-child(2) { color: var(--green); }
+.trow.sell span:nth-child(2) { color: var(--red); }
+.trow.big { background: #161004; font-weight: 700; }
+.trow.big span:nth-child(3) { color: var(--yellow); }
+.trow.new.buy { animation: fu .8s ease-out; }
+.trow.new.sell { animation: fd .8s ease-out; }
+
+/* ---------- news ---------- */
+.news-item { padding: 4px 8px; border-bottom: 1px solid #111; cursor: pointer; }
+.news-item:hover { background: #121212; }
+.news-item .t { color: var(--muted); margin-right: 6px; }
+.news-item .s { color: var(--amber); margin-right: 6px; }
+.news-item.fresh { animation: newsIn 2.5s ease-out; }
+.news-item.hot .h { color: var(--yellow); }
+@keyframes newsIn { 0% { background: #3a2a05; } 100% { background: transparent; } }
+
+/* ---------- analysis ---------- */
+.anal { display: grid; grid-template-columns: 1.25fr 1fr 1fr; gap: 1px; background: var(--line); min-height: 100%; }
+.anal > div { background: var(--panel); padding: 6px 10px; }
+.anal h4 { color: var(--amber); font-weight: 400; margin-bottom: 6px; border-bottom: 1px dotted #333; padding-bottom: 2px; }
+.verdict { font-size: 18px; font-weight: 700; letter-spacing: 1px; margin: 2px 0 6px; }
+.gauge {
+  position: relative; height: 10px; margin: 4px 0 4px;
+  background: linear-gradient(90deg, var(--red), #553 50%, var(--green));
+}
+.gauge i {
+  position: absolute; top: -4px; width: 3px; height: 18px; background: #fff;
+  box-shadow: 0 0 6px #fff; transform: translateX(-1px); transition: left .4s;
+}
+.gauge-lbl { display: flex; justify-content: space-between; color: var(--muted); font-size: 10px; margin-bottom: 6px; }
+.kv { display: grid; grid-template-columns: 1fr auto auto; gap: 2px 10px; }
+.kv.two { grid-template-columns: 1fr auto; }
+.kv .k { color: var(--muted); white-space: nowrap; }
+.kv .v { text-align: right; font-variant-numeric: tabular-nums; }
+.sig { text-align: right; font-weight: 700; }
+.sig.b { color: var(--green); }
+.sig.s { color: var(--red); }
+.sig.n { color: var(--muted); }
+.lvl-r { color: var(--red); }
+.lvl-s { color: var(--green); }
+.lvl-p { color: var(--amber); }
+
+/* ---------- status line ---------- */
+.statusline {
+  padding: 3px 10px; background: #0b0b0b; border-top: 1px solid var(--line);
+  color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.statusline .err { color: var(--red); }
+.statusline .ok { color: var(--green); }
+
+/* ---------- responsive ---------- */
+@media (max-width: 1100px) {
+  body { overflow: auto; height: auto; }
+  .status .clocks { display: none; }
+  .grid {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 460px 420px 300px 320px;
+    grid-template-areas:
+      "chart chart"
+      "watch book"
+      "anal  anal"
+      "news  trades";
+  }
+}
+@media (max-width: 680px) {
+  .topbar { flex-wrap: wrap; }
+  .status { display: none; }
+  .grid {
+    grid-template-columns: 1fr;
+    grid-template-rows: 380px 420px 420px auto 300px 300px;
+    grid-template-areas: "chart" "watch" "book" "anal" "trades" "news";
+  }
+  .anal { grid-template-columns: 1fr; }
+}
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">MARKET<span>TERMINAL</span></div>
+    <form id="cmd" class="cmd" autocomplete="off">
+      <span class="prompt">&gt;</span>
+      <input id="cmdInput" spellcheck="false" placeholder="TICKER of commando (HELP)">
+      <button type="submit" class="go">GO</button>
+    </form>
+    <div class="status">
+      <span class="stat"><i class="lamp on-g blink"></i>FEED</span>
+      <span class="stat"><i class="lamp on-g"></i>MARKT OPEN</span>
+      <span class="stat" id="latency">LAT 3ms</span>
+      <span class="clocks" id="clocks"></span>
+    </div>
+  </header>
+
+  <div class="tape"><div class="tape-track" id="tape"></div></div>
+
+  <nav class="fkeys">
+    <span class="fk-label">PERIODE</span>
+    <button data-tf="1" class="fk active">1M</button>
+    <button data-tf="5" class="fk">5M</button>
+    <button data-tf="15" class="fk">15M</button>
+    <button data-tf="60" class="fk">1H</button>
+    <span class="fk-sep"></span>
+    <span class="fk-label">OVERLAY</span>
+    <button data-ov="sma20" class="fk active">SMA20</button>
+    <button data-ov="sma50" class="fk active">SMA50</button>
+    <button data-ov="ema9" class="fk">EMA9</button>
+    <button data-ov="bb" class="fk">BOLL</button>
+    <span class="fk-sep"></span>
+    <span class="fk-label">ONDER</span>
+    <button data-lower="RSI" class="fk active">RSI</button>
+    <button data-lower="MACD" class="fk">MACD</button>
+    <button data-lower="NONE" class="fk">GEEN</button>
+  </nav>
+
+  <main class="grid">
+    <section class="panel p-watch">
+      <div class="ph"><span>1) WATCHLIST</span><span class="muted">SIM</span></div>
+      <div class="pb scroll">
+        <table id="watch">
+          <thead><tr><th></th><th>TICKER</th><th class="num">LAATST</th><th class="num">NETTO</th><th class="num">%</th><th class="num">VOLUME</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel p-chart">
+      <div class="ph quote">
+        <span class="q-sym" id="qSym"></span>
+        <span class="q-name" id="qName"></span>
+        <span class="q-last" id="qLast"></span>
+        <span class="q-chg" id="qChg"></span>
+        <span class="spacer"></span>
+        <span class="muted" id="qTf"></span>
+      </div>
+      <div class="chart-wrap">
+        <canvas id="chart"></canvas>
+        <div class="readout" id="readout"></div>
+      </div>
+    </section>
+
+    <section class="panel p-book">
+      <div class="ph"><span>2) ORDERBOEK</span><span class="muted" id="bookSym"></span></div>
+      <div class="book-head"><span></span><span>PRIJS</span><span class="num">AANTAL</span><span class="num">CUM.</span></div>
+      <div class="book" id="asks"></div>
+      <div class="spread" id="spread"></div>
+      <div class="book" id="bids"></div>
+      <div class="imbalance">
+        <span class="up">BID</span>
+        <div class="imb-bar"><div class="imb-fill" id="imbFill"></div></div>
+        <span class="dn">ASK</span>
+      </div>
+    </section>
+
+    <section class="panel p-news">
+      <div class="ph"><span>3) NIEUWS</span><span class="muted">TOP</span></div>
+      <div class="pb scroll" id="news"></div>
+    </section>
+
+    <section class="panel p-anal">
+      <div class="ph"><span>4) ANALYSE</span><span class="muted" id="analTf"></span></div>
+      <div class="pb scroll" id="analysis"></div>
+    </section>
+
+    <section class="panel p-trades">
+      <div class="ph"><span>5) TIME &amp; SALES</span><span class="muted" id="tradeCount"></span></div>
+      <div class="trade-head"><span>TIJD</span><span class="num">PRIJS</span><span class="num">AANTAL</span><span></span></div>
+      <div class="pb scroll" id="trades"></div>
+    </section>
+  </main>
+
+  <footer class="statusline" id="statusline"></footer>
+  <script>
+// ---- indicators.js ----
+// Technische indicatoren. Alle functies geven een array terug met dezelfde lengte
+// als de invoer; posities zonder genoeg historie zijn null.
+const TA = {
+  sma(v, n) {
+    const out = new Array(v.length).fill(null);
+    let sum = 0;
+    for (let i = 0; i < v.length; i++) {
+      sum += v[i];
+      if (i >= n) sum -= v[i - n];
+      if (i >= n - 1) out[i] = sum / n;
+    }
+    return out;
+  },
+
+  ema(v, n) {
+    const out = new Array(v.length).fill(null);
+    const k = 2 / (n + 1);
+    let e = null;
+    for (let i = 0; i < v.length; i++) {
+      if (v[i] == null) continue;
+      e = e == null ? v[i] : v[i] * k + e * (1 - k);
+      out[i] = e;
+    }
+    return out;
+  },
+
+  // RSI volgens Wilder
+  rsi(c, n = 14) {
+    const out = new Array(c.length).fill(null);
+    if (c.length <= n) return out;
+    let g = 0, l = 0;
+    for (let i = 1; i <= n; i++) {
+      const d = c[i] - c[i - 1];
+      if (d > 0) g += d; else l -= d;
+    }
+    g /= n; l /= n;
+    out[n] = l === 0 ? 100 : 100 - 100 / (1 + g / l);
+    for (let i = n + 1; i < c.length; i++) {
+      const d = c[i] - c[i - 1];
+      g = (g * (n - 1) + Math.max(d, 0)) / n;
+      l = (l * (n - 1) + Math.max(-d, 0)) / n;
+      out[i] = l === 0 ? 100 : 100 - 100 / (1 + g / l);
+    }
+    return out;
+  },
+
+  macd(c, fast = 12, slow = 26, sig = 9) {
+    const ef = TA.ema(c, fast), es = TA.ema(c, slow);
+    const macd = c.map((_, i) => ef[i] - es[i]);
+    const signal = TA.ema(macd, sig);
+    const hist = macd.map((m, i) => m - signal[i]);
+    return { macd, signal, hist };
+  },
+
+  bollinger(c, n = 20, k = 2) {
+    const mid = TA.sma(c, n);
+    const upper = new Array(c.length).fill(null);
+    const lower = new Array(c.length).fill(null);
+    for (let i = n - 1; i < c.length; i++) {
+      let s = 0;
+      for (let j = i - n + 1; j <= i; j++) s += (c[j] - mid[i]) ** 2;
+      const sd = Math.sqrt(s / n);
+      upper[i] = mid[i] + k * sd;
+      lower[i] = mid[i] - k * sd;
+    }
+    return { mid, upper, lower };
+  },
+
+  atr(bars, n = 14) {
+    const tr = bars.map((b, i) => i === 0 ? b.h - b.l
+      : Math.max(b.h - b.l, Math.abs(b.h - bars[i - 1].c), Math.abs(b.l - bars[i - 1].c)));
+    const out = new Array(bars.length).fill(null);
+    if (bars.length < n) return out;
+    let a = tr.slice(0, n).reduce((s, x) => s + x, 0) / n;
+    out[n - 1] = a;
+    for (let i = n; i < bars.length; i++) {
+      a = (a * (n - 1) + tr[i]) / n;
+      out[i] = a;
+    }
+    return out;
+  },
+
+  stdev(v) {
+    const m = v.reduce((s, x) => s + x, 0) / v.length;
+    return Math.sqrt(v.reduce((s, x) => s + (x - m) ** 2, 0) / v.length);
+  },
+};
+
+// ---- market.js ----
+// Gesimuleerde marktdata-feed. Elke bar is één "marktminuut"; in de live feed
+// duurt die BAR_MS echte milliseconden, zodat de grafiek zichtbaar beweegt.
+const Market = (() => {
+  const TICK_MS = 300;
+  const BAR_MS = 4000;
+  const HISTORY = 3000;          // minuutbars historie per ticker
+  const DAY = 390;               // handelsminuten per dag
+  const MAX_BARS = HISTORY + 1200;
+
+  // sigma = volatiliteit per minuutbar, avgVol = gemiddeld volume per minuut
+  const UNIVERSE = [
+    { sym: 'AAPL',  name: 'APPLE INC',               exch: 'US', cur: 'USD', px: 228.40,  sigma: .0011, avgVol: 120000, mcap: 3480, pe: 34.6, div: 0.44, beta: 1.24, sector: 'Technology' },
+    { sym: 'MSFT',  name: 'MICROSOFT CORP',          exch: 'US', cur: 'USD', px: 431.20,  sigma: .0010, avgVol: 60000,  mcap: 3205, pe: 36.1, div: 0.72, beta: 0.90, sector: 'Technology' },
+    { sym: 'NVDA',  name: 'NVIDIA CORP',             exch: 'US', cur: 'USD', px: 121.80,  sigma: .0022, avgVol: 600000, mcap: 2990, pe: 56.3, div: 0.03, beta: 1.68, sector: 'Semiconductors' },
+    { sym: 'AMZN',  name: 'AMAZON.COM INC',          exch: 'US', cur: 'USD', px: 186.50,  sigma: .0014, avgVol: 110000, mcap: 1960, pe: 44.8, div: 0,    beta: 1.15, sector: 'Consumer Disc.' },
+    { sym: 'GOOGL', name: 'ALPHABET INC-CL A',       exch: 'US', cur: 'USD', px: 165.30,  sigma: .0013, avgVol: 70000,  mcap: 2040, pe: 23.4, div: 0.48, beta: 1.04, sector: 'Communication' },
+    { sym: 'META',  name: 'META PLATFORMS INC',      exch: 'US', cur: 'USD', px: 572.10,  sigma: .0016, avgVol: 35000,  mcap: 1450, pe: 29.1, div: 0.35, beta: 1.21, sector: 'Communication' },
+    { sym: 'TSLA',  name: 'TESLA INC',               exch: 'US', cur: 'USD', px: 248.90,  sigma: .0028, avgVol: 250000, mcap: 795,  pe: 68.2, div: 0,    beta: 2.31, sector: 'Automotive' },
+    { sym: 'JPM',   name: 'JPMORGAN CHASE & CO',     exch: 'US', cur: 'USD', px: 212.40,  sigma: .0009, avgVol: 25000,  mcap: 605,  pe: 11.8, div: 2.25, beta: 1.08, sector: 'Financials' },
+    { sym: 'ASML',  name: 'ASML HOLDING NV',         exch: 'NA', cur: 'EUR', px: 712.60,  sigma: .0016, avgVol: 3000,   mcap: 280,  pe: 36.5, div: 0.95, beta: 1.35, sector: 'Semiconductors' },
+    { sym: 'ADYEN', name: 'ADYEN NV',                exch: 'NA', cur: 'EUR', px: 1385.00, sigma: .0024, avgVol: 600,    mcap: 43,   pe: 47.2, div: 0,    beta: 1.55, sector: 'Fintech' },
+    { sym: 'SHELL', name: 'SHELL PLC',               exch: 'NA', cur: 'EUR', px: 31.20,   sigma: .0009, avgVol: 40000,  mcap: 198,  pe: 12.6, div: 4.10, beta: 0.62, sector: 'Energy' },
+    { sym: 'INGA',  name: 'ING GROEP NV',            exch: 'NA', cur: 'EUR', px: 16.45,   sigma: .0011, avgVol: 60000,  mcap: 54,   pe: 7.9,  div: 6.80, beta: 1.12, sector: 'Financials' },
+    { sym: 'PHIA',  name: 'KONINKLIJKE PHILIPS NV',  exch: 'NA', cur: 'EUR', px: 26.80,   sigma: .0015, avgVol: 15000,  mcap: 25,   pe: 22.4, div: 3.20, beta: 0.88, sector: 'Health Care' },
+    { sym: 'HEIA',  name: 'HEINEKEN NV',             exch: 'NA', cur: 'EUR', px: 82.10,   sigma: .0009, avgVol: 8000,   mcap: 46,   pe: 18.3, div: 2.10, beta: 0.71, sector: 'Consumer Staples' },
+  ];
+
+  const bySym = new Map(UNIVERSE.map(t => [t.sym, t]));
+  const listeners = [];
+  let barStart = Date.now();
+
+  function randn() {
+    let u = 0, v = 0;
+    while (!u) u = Math.random();
+    while (!v) v = Math.random();
+    return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+  }
+
+  function genHistory(t) {
+    const bars = [];
+    const now = Math.floor(Date.now() / 60000) * 60000;
+    let p = 100, drift = 0;
+    for (let i = 0; i < HISTORY; i++) {
+      if (i % 150 === 0) drift = (Math.random() - 0.48) * t.sigma * 0.12; // trend-regimes
+      const o = p;
+      let h = o, l = o;
+      for (let k = 0; k < 6; k++) {
+        p *= Math.exp(drift / 6 + t.sigma * randn() / Math.sqrt(6));
+        h = Math.max(h, p);
+        l = Math.min(l, p);
+      }
+      const move = Math.abs(p - o) / o / t.sigma;
+      bars.push({
+        t: now - (HISTORY - 1 - i) * 60000,
+        o, h, l, c: p,
+        v: Math.round(t.avgVol * (0.4 + Math.random()) * (1 + move * 0.4)),
+      });
+    }
+    const f = t.px / p;
+    for (const b of bars) { b.o *= f; b.h *= f; b.l *= f; b.c *= f; }
+    return bars;
+  }
+
+  for (const t of UNIVERSE) {
+    t.tick = t.px >= 1000 ? 0.2 : t.px >= 500 ? 0.05 : 0.01;
+    t.lot = t.avgVol < 20000 ? 10 : 100;
+    t.bars = genHistory(t);
+    t.last = +(Math.round(t.px / t.tick) * t.tick).toFixed(2);
+    t.bars[t.bars.length - 1].c = t.last;
+    t.prevLast = t.last;
+    t.mom = 0;
+    t.trade = null;
+  }
+
+  // Dagstatistieken over de laatste DAY minuutbars
+  function day(t) {
+    const b = t.bars, n = b.length;
+    const from = Math.max(0, n - DAY);
+    let hi = -Infinity, lo = Infinity, vol = 0, pv = 0;
+    for (let i = from; i < n; i++) {
+      hi = Math.max(hi, b[i].h);
+      lo = Math.min(lo, b[i].l);
+      vol += b[i].v;
+      pv += (b[i].h + b[i].l + b[i].c) / 3 * b[i].v;
+    }
+    const ref = b[Math.max(0, n - DAY - 1)].c;
+    return { ref, open: b[from].o, high: hi, low: lo, vol, vwap: vol ? pv / vol : t.last, chg: t.last - ref, pct: (t.last - ref) / ref * 100 };
+  }
+
+  function tick() {
+    const now = Date.now();
+    const newBar = now - barStart >= BAR_MS;
+    if (newBar) barStart = now;
+    const changed = [];
+    const scale = Math.sqrt(TICK_MS / BAR_MS);
+
+    for (const t of UNIVERSE) {
+      t.prevLast = t.last;
+      t.trade = null;
+
+      if (newBar) {
+        const lb = t.bars[t.bars.length - 1];
+        t.bars.push({ t: lb.t + 60000, o: t.last, h: t.last, l: t.last, c: t.last, v: 0 });
+        // in blokken van 60 inkorten zodat de aggregatie-uitlijning gelijk blijft
+        if (t.bars.length > MAX_BARS) t.bars.splice(0, 60);
+      }
+
+      if (Math.random() < 0.62) {
+        t.mom = t.mom * 0.97 + randn() * 0.03;
+        const r = t.sigma * scale * (randn() + t.mom * 3);
+        t.last = +(Math.max(t.tick, Math.round(t.last * Math.exp(r) / t.tick) * t.tick)).toFixed(2);
+        const side = t.last > t.prevLast ? 'B' : t.last < t.prevLast ? 'S' : (Math.random() < 0.5 ? 'B' : 'S');
+        const size = Math.max(t.lot, Math.round(t.avgVol / 8 * -Math.log(Math.random()) / t.lot) * t.lot);
+        t.trade = { px: t.last, size, side, time: now };
+
+        const b = t.bars[t.bars.length - 1];
+        b.c = t.last;
+        b.h = Math.max(b.h, t.last);
+        b.l = Math.min(b.l, t.last);
+        b.v += size;
+        changed.push(t);
+      }
+    }
+    for (const fn of listeners) fn(changed, newBar);
+  }
+
+  // Groepeer minuutbars per `f` stuks (5M, 15M, 1H)
+  function aggregate(bars, f) {
+    if (f === 1) return bars;
+    const out = [];
+    for (let i = 0; i < bars.length; i += f) {
+      const g = bars.slice(i, i + f);
+      let h = -Infinity, l = Infinity, v = 0;
+      for (const b of g) { h = Math.max(h, b.h); l = Math.min(l, b.l); v += b.v; }
+      out.push({ t: g[0].t, o: g[0].o, h, l, c: g[g.length - 1].c, v });
+    }
+    return out;
+  }
+
+  return {
+    list: UNIVERSE,
+    get: sym => bySym.get(sym),
+    day,
+    aggregate,
+    randn,
+    onTick: fn => listeners.push(fn),
+    start: () => setInterval(tick, TICK_MS),
+  };
+})();
+
+// ---- orderbook.js ----
+// Gesimuleerd level-2 orderboek rond de laatste koers. Per prijsniveau wordt de
+// grootte onthouden, zodat elke update per niveau een richting (dir) heeft:
+// +1 = meer volume (groene lamp), -1 = minder volume (rode lamp).
+class OrderBook {
+  constructor(depth = 14) {
+    this.depth = depth;
+    this.sizes = new Map();
+    this.sym = null;
+    this.spreadTicks = 1;
+  }
+
+  update(t) {
+    if (t.sym !== this.sym) {
+      this.sizes.clear();
+      this.sym = t.sym;
+    }
+    const tk = t.tick, lot = t.lot;
+    const base = Math.max(lot, t.avgVol * 0.12);
+    const roundLot = x => Math.max(lot, Math.round(x / lot) * lot);
+    const k = Math.round(t.last / tk);
+
+    if (Math.random() < 0.1) this.spreadTicks = Math.random() < 0.7 ? 1 : 2;
+    let bidK, askK;
+    if (t.trade && t.trade.side === 'B') { askK = k; bidK = k - this.spreadTicks; }
+    else { bidK = k; askK = k + this.spreadTicks; }
+
+    const level = (side, kk, i) => {
+      const key = side + kk;
+      const prev = this.sizes.get(key);
+      let size;
+      if (prev === undefined) size = roundLot(base * (0.3 + Math.random() * 1.2) * (1 + i * 0.15));
+      else if (Math.random() < 0.3) size = roundLot(prev + Market.randn() * base * 0.4);
+      else size = prev;
+      this.sizes.set(key, size);
+      return { key, price: kk * tk, size, dir: prev === undefined || prev === size ? 0 : Math.sign(size - prev) };
+    };
+
+    const asks = [], bids = [];
+    for (let i = 0; i < this.depth; i++) {
+      asks.push(level('A', askK + i, i));
+      bids.push(level('B', bidK - i, i));
+    }
+
+    // de laatste transactie haalt volume weg van de beste bied/laat
+    if (t.trade) {
+      const hit = t.trade.side === 'B' ? asks[0] : bids[0];
+      const left = Math.max(lot, hit.size - t.trade.size);
+      if (left !== hit.size) {
+        hit.size = left;
+        hit.dir = -1;
+        this.sizes.set(hit.key, left);
+      }
+    }
+
+    if (this.sizes.size > 600) {
+      const keep = new Set([...asks, ...bids].map(l => l.key));
+      for (const key of this.sizes.keys()) if (!keep.has(key)) this.sizes.delete(key);
+    }
+
+    let ca = 0, cb = 0;
+    for (const a of asks) a.cum = ca += a.size;
+    for (const b of bids) b.cum = cb += b.size;
+
+    return {
+      asks, bids,
+      spread: (askK - bidK) * tk,
+      mid: (askK + bidK) / 2 * tk,
+      totalAsk: ca, totalBid: cb,
+    };
+  }
+}
+
+// ---- chart.js ----
+// Candlestick-grafiek op canvas met volume, overlays (SMA/EMA/Bollinger),
+// een onderpaneel (RSI/MACD), crosshair, zoom (scroll) en pannen (slepen).
+class PriceChart {
+  constructor(canvas, readout) {
+    this.cv = canvas;
+    this.ctx = canvas.getContext('2d');
+    this.readout = readout;
+    this.bars = [];
+    this.ind = {};
+    this.tf = 1;
+    this.visible = 110;
+    this.offset = 0;
+    this.mouse = null;
+    this.drag = null;
+    this.overlays = { sma20: true, sma50: true, ema9: false, bb: false };
+    this.lower = 'RSI';
+    this.C = {
+      up: '#00e676', dn: '#ff3d3d', grid: '#151515', axis: '#8a8a8a', amber: '#ffa028',
+      sma20: '#ffd400', sma50: '#4da3ff', ema9: '#e040fb', bb: 'rgba(170,170,255,0.6)',
+    };
+
+    new ResizeObserver(() => this.resize()).observe(canvas.parentElement);
+
+    canvas.addEventListener('mousemove', e => {
+      const r = canvas.getBoundingClientRect();
+      this.mouse = { x: e.clientX - r.left, y: e.clientY - r.top };
+      if (this.drag) {
+        const shift = Math.round((e.clientX - this.drag.x) / this.drag.cw);
+        this.offset = Math.max(0, Math.min(this.bars.length - 20, this.drag.off + shift));
+      }
+      this.draw();
+    });
+    canvas.addEventListener('mouseleave', () => { this.mouse = null; this.drag = null; this.draw(); });
+    canvas.addEventListener('mousedown', e => { this.drag = { x: e.clientX, off: this.offset, cw: this.cw || 5 }; });
+    window.addEventListener('mouseup', () => { this.drag = null; });
+    canvas.addEventListener('wheel', e => {
+      e.preventDefault();
+      const f = e.deltaY > 0 ? 1.12 : 1 / 1.12;
+      this.visible = Math.round(Math.max(20, Math.min(Math.max(20, this.bars.length), this.visible * f)));
+      this.draw();
+    }, { passive: false });
+    canvas.addEventListener('dblclick', () => { this.offset = 0; this.visible = 110; this.draw(); });
+  }
+
+  resize() {
+    const p = this.cv.parentElement;
+    const w = p.clientWidth, h = p.clientHeight;
+    if (!w || !h) return;
+    this.dpr = window.devicePixelRatio || 1;
+    this.w = w; this.h = h;
+    this.cv.width = Math.round(w * this.dpr);
+    this.cv.height = Math.round(h * this.dpr);
+    this.cv.style.width = w + 'px';
+    this.cv.style.height = h + 'px';
+    this.render();
+  }
+
+  setData(bars, tf) {
+    if (tf !== this.tf) { this.offset = 0; this.tf = tf; }
+    this.bars = bars;
+    const c = bars.map(b => b.c);
+    this.ind = {
+      sma20: TA.sma(c, 20),
+      sma50: TA.sma(c, 50),
+      ema9: TA.ema(c, 9),
+      bb: TA.bollinger(c, 20, 2),
+      rsi: TA.rsi(c, 14),
+      macd: TA.macd(c),
+    };
+    this.draw();
+  }
+
+  draw() {
+    if (this._raf) return;
+    this._raf = requestAnimationFrame(() => { this._raf = 0; this.render(); });
+  }
+
+  static niceStep(x) {
+    const p = Math.pow(10, Math.floor(Math.log10(x)));
+    for (const m of [1, 2, 2.5, 5, 10]) if (m * p >= x) return m * p;
+    return 10 * p;
+  }
+
+  fmtTime(t) {
+    const d = new Date(t);
+    const hm = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+    return this.tf >= 60 ? `${d.getDate()}/${d.getMonth() + 1} ${hm}` : hm;
+  }
+
+  render() {
+    const { ctx, w, h, bars, C } = this;
+    if (!w) return;
+    ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, w, h);
+    const n = bars.length;
+    if (!n) return;
+
+    const AX = 68, TH = 18;
+    const pw = w - AX;
+    const lowerH = this.lower === 'NONE' ? 0 : Math.round((h - TH) * 0.24);
+    const mainH = h - TH - lowerH;
+    const plotBottom = mainH + lowerH;
+
+    const vis = Math.min(this.visible, n);
+    this.offset = Math.min(this.offset, Math.max(0, n - vis));
+    const end = n - this.offset;
+    const start = Math.max(0, end - vis);
+    const cw = pw / vis;
+    this.cw = cw;
+    const X = i => (i - start + 0.5) * cw;
+
+    let hi = -Infinity, lo = Infinity, vmax = 0;
+    for (let i = start; i < end; i++) {
+      const b = bars[i];
+      hi = Math.max(hi, b.h); lo = Math.min(lo, b.l); vmax = Math.max(vmax, b.v);
+      if (this.overlays.bb && this.ind.bb.upper[i] != null) {
+        hi = Math.max(hi, this.ind.bb.upper[i]);
+        lo = Math.min(lo, this.ind.bb.lower[i]);
+      }
+    }
+    const pad = (hi - lo) * 0.08 || 1;
+    hi += pad; lo -= pad;
+    const pTop = 8, pBot = mainH * 0.86;
+    const Y = p => pTop + (hi - p) / (hi - lo) * (pBot - pTop);
+    const P = y => hi - (y - pTop) / (pBot - pTop) * (hi - lo);
+
+    ctx.font = '11px Consolas, monospace';
+    ctx.lineWidth = 1;
+
+    // raster + prijsas
+    const step = PriceChart.niceStep((hi - lo) / Math.max(3, Math.floor(mainH / 55)));
+    const dec = step < 0.05 ? 3 : 2;
+    ctx.strokeStyle = C.grid; ctx.fillStyle = C.axis;
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    for (let p = Math.ceil(lo / step) * step; p <= hi; p += step) {
+      const y = Math.round(Y(p)) + 0.5;
+      if (y > mainH - 4) continue;
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(pw, y); ctx.stroke();
+      ctx.fillText(p.toFixed(dec), pw + 6, y);
+    }
+
+    // tijdas
+    const every = Math.max(1, Math.ceil(90 / cw));
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    for (let i = start; i < end; i++) {
+      if (i % every) continue;
+      const x = Math.round(X(i)) + 0.5;
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, plotBottom); ctx.stroke();
+      ctx.fillText(this.fmtTime(bars[i].t), x, plotBottom + 3);
+    }
+
+    const bw = Math.max(1, cw * 0.68);
+
+    // volume
+    const volH = mainH * 0.2;
+    for (let i = start; i < end; i++) {
+      const b = bars[i];
+      const vh = vmax ? b.v / vmax * volH : 0;
+      ctx.fillStyle = b.c >= b.o ? 'rgba(0,230,118,0.22)' : 'rgba(255,61,61,0.22)';
+      ctx.fillRect(X(i) - bw / 2, mainH - vh, bw, vh);
+    }
+
+    const line = (arr, color, width = 1.2) => {
+      ctx.strokeStyle = color; ctx.lineWidth = width;
+      ctx.beginPath();
+      let on = false;
+      for (let i = start; i < end; i++) {
+        const v = arr[i];
+        if (v == null) { on = false; continue; }
+        on ? ctx.lineTo(X(i), Y(v)) : ctx.moveTo(X(i), Y(v));
+        on = true;
+      }
+      ctx.stroke();
+      ctx.lineWidth = 1;
+    };
+
+    // Bollinger-band vulling
+    if (this.overlays.bb) {
+      const { upper, lower } = this.ind.bb;
+      ctx.fillStyle = 'rgba(120,120,255,0.07)';
+      ctx.beginPath();
+      let first = true;
+      for (let i = start; i < end; i++) if (upper[i] != null) { first ? ctx.moveTo(X(i), Y(upper[i])) : ctx.lineTo(X(i), Y(upper[i])); first = false; }
+      for (let i = end - 1; i >= start; i--) if (lower[i] != null) ctx.lineTo(X(i), Y(lower[i]));
+      ctx.fill();
+      line(upper, C.bb); line(lower, C.bb); line(this.ind.bb.mid, 'rgba(170,170,255,0.35)');
+    }
+
+    // candles
+    for (let i = start; i < end; i++) {
+      const b = bars[i];
+      const col = b.c >= b.o ? C.up : C.dn;
+      const x = Math.round(X(i)) + 0.5;
+      ctx.strokeStyle = col;
+      ctx.beginPath(); ctx.moveTo(x, Y(b.h)); ctx.lineTo(x, Y(b.l)); ctx.stroke();
+      const y1 = Y(Math.max(b.o, b.c)), y2 = Y(Math.min(b.o, b.c));
+      ctx.fillStyle = col;
+      ctx.fillRect(Math.round(X(i) - bw / 2), Math.round(y1), Math.max(1, Math.round(bw)), Math.max(1, Math.round(y2 - y1)));
+    }
+
+    if (this.overlays.sma50) line(this.ind.sma50, C.sma50);
+    if (this.overlays.sma20) line(this.ind.sma20, C.sma20);
+    if (this.overlays.ema9) line(this.ind.ema9, C.ema9);
+
+    // laatste koers
+    const last = bars[n - 1];
+    const ly = Y(last.c);
+    const lcol = last.c >= last.o ? C.up : C.dn;
+    if (ly > 0 && ly < mainH) {
+      ctx.setLineDash([3, 3]); ctx.strokeStyle = lcol;
+      ctx.beginPath(); ctx.moveTo(0, Math.round(ly) + 0.5); ctx.lineTo(pw, Math.round(ly) + 0.5); ctx.stroke();
+      ctx.setLineDash([]);
+      this.axisLabel(pw, ly, last.c.toFixed(2), lcol, '#000');
+    }
+
+    // scheiding hoofdpaneel / onderpaneel
+    ctx.strokeStyle = '#333';
+    ctx.beginPath(); ctx.moveTo(0, mainH + 0.5); ctx.lineTo(w, mainH + 0.5); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(pw + 0.5, 0); ctx.lineTo(pw + 0.5, plotBottom); ctx.stroke();
+
+    if (lowerH) this.renderLower(start, end, X, bw, mainH, lowerH, pw);
+
+    // crosshair
+    let hover = n - 1;
+    if (this.mouse && this.mouse.x < pw && this.mouse.y < plotBottom) {
+      const { x: mx, y: my } = this.mouse;
+      hover = Math.min(end - 1, Math.max(start, start + Math.floor(mx / cw)));
+      const cx = Math.round(X(hover)) + 0.5;
+      ctx.setLineDash([4, 4]); ctx.strokeStyle = '#777';
+      ctx.beginPath(); ctx.moveTo(cx, 0); ctx.lineTo(cx, plotBottom); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0, Math.round(my) + 0.5); ctx.lineTo(pw, Math.round(my) + 0.5); ctx.stroke();
+      ctx.setLineDash([]);
+      if (my < mainH) this.axisLabel(pw, my, P(my).toFixed(2), '#444', '#fff');
+      const tl = this.fmtTime(bars[hover].t);
+      const tw = ctx.measureText(tl).width + 10;
+      ctx.fillStyle = '#444'; ctx.fillRect(cx - tw / 2, plotBottom, tw, TH);
+      ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+      ctx.fillText(tl, cx, plotBottom + 3);
+    }
+
+    this.updateReadout(hover);
+  }
+
+  renderLower(start, end, X, bw, top, lh, pw) {
+    const { ctx, C } = this;
+    ctx.textBaseline = 'middle';
+
+    if (this.lower === 'RSI') {
+      const rsi = this.ind.rsi;
+      const Y = v => top + 6 + (100 - v) / 100 * (lh - 12);
+      ctx.fillStyle = 'rgba(255,160,40,0.05)';
+      ctx.fillRect(0, Y(70), pw, Y(30) - Y(70));
+      ctx.setLineDash([2, 3]); ctx.strokeStyle = '#444';
+      for (const lvl of [30, 70]) {
+        ctx.beginPath(); ctx.moveTo(0, Math.round(Y(lvl)) + 0.5); ctx.lineTo(pw, Math.round(Y(lvl)) + 0.5); ctx.stroke();
+        ctx.fillStyle = C.axis; ctx.textAlign = 'left'; ctx.fillText(String(lvl), pw + 6, Y(lvl));
+      }
+      ctx.setLineDash([]);
+      ctx.strokeStyle = C.amber; ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      let on = false;
+      for (let i = start; i < end; i++) {
+        if (rsi[i] == null) continue;
+        on ? ctx.lineTo(X(i), Y(rsi[i])) : ctx.moveTo(X(i), Y(rsi[i]));
+        on = true;
+      }
+      ctx.stroke(); ctx.lineWidth = 1;
+      const lv = rsi[end - 1];
+      ctx.fillStyle = C.amber; ctx.textAlign = 'left';
+      ctx.fillText(`RSI(14) ${lv == null ? '—' : lv.toFixed(1)}`, 6, top + 10);
+    } else {
+      const { macd, signal, hist } = this.ind.macd;
+      let amax = 1e-9;
+      for (let i = start; i < end; i++) amax = Math.max(amax, Math.abs(macd[i]), Math.abs(signal[i]), Math.abs(hist[i]));
+      const mid = top + lh / 2;
+      const Y = v => mid - v / amax * (lh / 2 - 8);
+      for (let i = start; i < end; i++) {
+        const v = hist[i];
+        const rising = i > 0 && v > hist[i - 1];
+        ctx.fillStyle = v >= 0 ? (rising ? 'rgba(0,230,118,0.75)' : 'rgba(0,230,118,0.35)') : (rising ? 'rgba(255,61,61,0.35)' : 'rgba(255,61,61,0.75)');
+        ctx.fillRect(X(i) - bw / 2, Math.min(mid, Y(v)), bw, Math.abs(Y(v) - mid));
+      }
+      ctx.strokeStyle = '#333';
+      ctx.beginPath(); ctx.moveTo(0, Math.round(mid) + 0.5); ctx.lineTo(pw, Math.round(mid) + 0.5); ctx.stroke();
+      for (const [arr, col] of [[macd, C.sma50], [signal, C.amber]]) {
+        ctx.strokeStyle = col; ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        for (let i = start; i < end; i++) i === start ? ctx.moveTo(X(i), Y(arr[i])) : ctx.lineTo(X(i), Y(arr[i]));
+        ctx.stroke();
+      }
+      ctx.lineWidth = 1;
+      ctx.textAlign = 'left';
+      ctx.fillStyle = C.sma50; ctx.fillText(`MACD ${macd[end - 1].toFixed(3)}`, 6, top + 10);
+      ctx.fillStyle = C.amber; ctx.fillText(`SIG ${signal[end - 1].toFixed(3)}`, 110, top + 10);
+      ctx.fillStyle = C.axis; ctx.fillText('0', pw + 6, mid);
+    }
+  }
+
+  axisLabel(x, y, text, bg, fg) {
+    const { ctx } = this;
+    ctx.fillStyle = bg;
+    ctx.fillRect(x + 1, y - 8, this.w - x - 1, 16);
+    ctx.fillStyle = fg;
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.fillText(text, x + 6, y);
+  }
+
+  updateReadout(i) {
+    const b = this.bars[i];
+    if (!b) return;
+    const prev = this.bars[i - 1] || b;
+    const chg = (b.c - prev.c) / prev.c * 100;
+    const cls = chg >= 0 ? 'up' : 'dn';
+    const f = v => v == null ? '—' : v.toFixed(2);
+    const vol = b.v >= 1e6 ? (b.v / 1e6).toFixed(2) + 'M' : b.v >= 1e3 ? (b.v / 1e3).toFixed(1) + 'K' : b.v;
+    let s = `${this.fmtTime(b.t)} &nbsp;O <b>${f(b.o)}</b>H <b>${f(b.h)}</b>L <b>${f(b.l)}</b>C <b class="${cls}">${f(b.c)}</b>`
+      + `<b class="${cls}">${chg >= 0 ? '+' : ''}${chg.toFixed(2)}%</b>V <b>${vol}</b>`;
+    if (this.overlays.sma20) s += `<span style="color:${this.C.sma20}">SMA20 ${f(this.ind.sma20[i])}</span> `;
+    if (this.overlays.sma50) s += `<span style="color:${this.C.sma50}">SMA50 ${f(this.ind.sma50[i])}</span> `;
+    if (this.overlays.ema9) s += `<span style="color:${this.C.ema9}">EMA9 ${f(this.ind.ema9[i])}</span>`;
+    this.readout.innerHTML = s;
+  }
+}
+
+// ---- analysis.js ----
+// Technische samenvatting, koersniveaus en statistieken voor het actieve aandeel.
+const Analysis = (() => {
+  const f = (v, d = 2) => v == null || !isFinite(v) ? '—' : v.toFixed(d);
+  const sigCell = s => s > 0 ? '<span class="sig b">KOOP</span>' : s < 0 ? '<span class="sig s">VERKOOP</span>' : '<span class="sig n">NEUTRAAL</span>';
+
+  function compute(t, bars) {
+    const c = bars.map(b => b.c);
+    const last = t.last;
+    const at = arr => arr[arr.length - 1];
+
+    const sma20 = at(TA.sma(c, 20)), sma50 = at(TA.sma(c, 50)), sma200 = at(TA.sma(c, 200));
+    const rsi = at(TA.rsi(c, 14));
+    const m = TA.macd(c);
+    const macd = at(m.macd), sig = at(m.signal), hist = at(m.hist), histPrev = m.hist[m.hist.length - 2];
+    const bb = TA.bollinger(c, 20, 2);
+    const pb = (last - at(bb.lower)) / (at(bb.upper) - at(bb.lower));
+    const atr = at(TA.atr(bars, 14));
+
+    const signals = [
+      ['RSI (14)', f(rsi, 1), rsi == null ? 0 : rsi < 30 ? 1 : rsi > 70 ? -1 : 0],
+      ['MACD (12,26,9)', f(macd, 3), macd > sig ? 1 : -1],
+      ['MACD histogram', f(hist, 3), hist > histPrev ? 1 : -1],
+      ['Koers vs SMA 20', f(sma20), sma20 == null ? 0 : last > sma20 ? 1 : -1],
+      ['Koers vs SMA 50', f(sma50), sma50 == null ? 0 : last > sma50 ? 1 : -1],
+      ['Koers vs SMA 200', f(sma200), sma200 == null ? 0 : last > sma200 ? 1 : -1],
+      ['SMA 20/50 cross', sma20 > sma50 ? 'GOLDEN' : 'DEATH', sma20 == null || sma50 == null ? 0 : sma20 > sma50 ? 1 : -1],
+      ['Bollinger %B', f(pb * 100, 1) + '%', pb < 0.05 ? 1 : pb > 0.95 ? -1 : 0],
+    ];
+    const score = signals.reduce((s, x) => s + x[2], 0) / signals.length;
+    const verdict =
+      score > 0.5 ? ['STERK KOPEN', 'up'] :
+      score > 0.15 ? ['KOPEN', 'up'] :
+      score >= -0.15 ? ['NEUTRAAL', 'muted'] :
+      score > -0.5 ? ['VERKOPEN', 'dn'] : ['STERK VERKOPEN', 'dn'];
+
+    // pivots over de laatste 50 bars
+    const win = bars.slice(-50);
+    const H = Math.max(...win.map(b => b.h)), L = Math.min(...win.map(b => b.l));
+    const Pv = (H + L + last) / 3;
+    const levels = [
+      ['R2', Pv + (H - L), 'lvl-r'], ['R1', 2 * Pv - L, 'lvl-r'], ['PIVOT', Pv, 'lvl-p'],
+      ['S1', 2 * Pv - H, 'lvl-s'], ['S2', Pv - (H - L), 'lvl-s'],
+    ];
+
+    // geannualiseerde volatiliteit op basis van minuutrendementen van de dag
+    const base = t.bars.slice(-391);
+    const rets = [];
+    for (let i = 1; i < base.length; i++) rets.push(Math.log(base[i].c / base[i - 1].c));
+    const vol = TA.stdev(rets) * Math.sqrt(390 * 252) * 100;
+
+    const day = Market.day(t);
+    return { signals, score, verdict, levels, H, L, atr, vol, day, last };
+  }
+
+  function render(el, t, a) {
+    const buys = a.signals.filter(s => s[2] > 0).length;
+    const sells = a.signals.filter(s => s[2] < 0).length;
+    const neutral = a.signals.length - buys - sells;
+    const dist = p => `${((p - a.last) / a.last * 100 >= 0 ? '+' : '')}${f((p - a.last) / a.last * 100)}%`;
+    const d = a.day;
+    const big = v => v >= 1e6 ? f(v / 1e6) + 'M' : v >= 1e3 ? f(v / 1e3, 1) + 'K' : String(v);
+
+    el.innerHTML = `
+      <div class="anal">
+        <div>
+          <h4>TECHNISCHE SAMENVATTING</h4>
+          <div class="verdict ${a.verdict[1]}">${a.verdict[0]}</div>
+          <div class="gauge"><i style="left:${((a.score + 1) / 2 * 100).toFixed(1)}%"></i></div>
+          <div class="gauge-lbl"><span>STERK VERKOPEN</span><span>NEUTRAAL</span><span>STERK KOPEN</span></div>
+          <div class="kv" style="margin-bottom:6px">
+            <span class="k">Signalen</span><span class="v up">${buys} koop</span><span class="v dn">${sells} verkoop</span>
+          </div>
+          <div class="kv">
+            ${a.signals.map(s => `<span class="k">${s[0]}</span><span class="v">${s[1]}</span>${sigCell(s[2])}`).join('')}
+          </div>
+          <div class="muted" style="margin-top:4px">${neutral} neutraal</div>
+        </div>
+        <div>
+          <h4>KOERSNIVEAUS</h4>
+          <div class="kv">
+            ${a.levels.map(l => `<span class="k ${l[2]}">${l[0]}</span><span class="v">${f(l[1])}</span><span class="v muted">${dist(l[1])}</span>`).join('')}
+            <span class="k">Weerstand (50)</span><span class="v">${f(a.H)}</span><span class="v muted">${dist(a.H)}</span>
+            <span class="k">Steun (50)</span><span class="v">${f(a.L)}</span><span class="v muted">${dist(a.L)}</span>
+            <span class="k">VWAP dag</span><span class="v">${f(d.vwap)}</span><span class="v muted">${dist(d.vwap)}</span>
+          </div>
+          <h4 style="margin-top:10px">DAG</h4>
+          <div class="kv">
+            <span class="k">Open</span><span class="v">${f(d.open)}</span><span></span>
+            <span class="k">Hoog / Laag</span><span class="v">${f(d.high)}</span><span class="v">${f(d.low)}</span>
+            <span class="k">Vorig slot</span><span class="v">${f(d.ref)}</span><span class="v ${d.chg >= 0 ? 'up' : 'dn'}">${d.chg >= 0 ? '+' : ''}${f(d.pct)}%</span>
+          </div>
+        </div>
+        <div>
+          <h4>STATISTIEKEN</h4>
+          <div class="kv">
+            <span class="k">ATR (14)</span><span class="v">${f(a.atr)}</span><span class="v muted">${f(a.atr / a.last * 100)}%</span>
+            <span class="k">Volatiliteit (jr)</span><span class="v">${f(a.vol, 1)}%</span><span></span>
+            <span class="k">Volume dag</span><span class="v">${big(d.vol)}</span><span></span>
+            <span class="k">Omzet dag</span><span class="v">${big(d.vol * d.vwap)}</span><span class="v muted">${t.cur}</span>
+          </div>
+          <h4 style="margin-top:10px">FUNDAMENTEEL</h4>
+          <div class="kv">
+            <span class="k">Sector</span><span class="v">${t.sector}</span><span></span>
+            <span class="k">Marktwaarde</span><span class="v">${t.mcap.toLocaleString('nl-NL')} mld</span><span class="v muted">${t.cur}</span>
+            <span class="k">K/W</span><span class="v">${f(t.pe, 1)}</span><span></span>
+            <span class="k">Dividendrend.</span><span class="v">${f(t.div)}%</span><span></span>
+            <span class="k">Beta</span><span class="v">${f(t.beta)}</span><span></span>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  return { compute, render };
+})();
+
+// ---- app.js ----
+(() => {
+  const $ = s => document.querySelector(s);
+  const TF_LABEL = { 1: '1M', 5: '5M', 15: '15M', 60: '1H' };
+  const DEPTH = 14;
+
+  const state = { sym: 'AAPL', tf: 1 };
+  const chart = new PriceChart($('#chart'), $('#readout'));
+  const book = new OrderBook(DEPTH);
+
+  const fmt = (v, d = 2) => v == null || !isFinite(v) ? '—'
+    : v.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
+  const fmtVol = v => v >= 1e9 ? (v / 1e9).toFixed(2) + 'B' : v >= 1e6 ? (v / 1e6).toFixed(2) + 'M'
+    : v >= 1e3 ? (v / 1e3).toFixed(1) + 'K' : String(Math.round(v));
+  const signed = (v, d = 2) => (v >= 0 ? '+' : '') + fmt(v, d);
+  const hms = t => new Date(t).toLocaleTimeString('nl-NL', { hour12: false });
+
+  // Animatie opnieuw starten: class weghalen, reflow forceren, class toevoegen
+  function restart(el, cls, all) {
+    el.classList.remove(...all);
+    void el.offsetWidth;
+    el.classList.add(cls);
+  }
+  const flash = (el, up) => restart(el, up ? 'fu' : 'fd', ['fu', 'fd']);
+  const lamp = (el, up) => restart(el, up ? 'g' : 'r', ['g', 'r']);
+
+  function status(html, cls = '') {
+    $('#statusline').innerHTML = cls ? `<span class="${cls}">${html}</span>` : html;
+  }
+
+  // ---------------- watchlist ----------------
+  const watchRows = {};
+  for (const t of Market.list) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td><i class="lamp"></i></td><td class="sym">${t.sym}<small>${t.exch}</small></td>`
+      + '<td class="num last"></td><td class="num chg"></td><td class="num pct"></td><td class="num vol"></td>';
+    tr.addEventListener('click', () => select(t.sym));
+    $('#watch tbody').appendChild(tr);
+    const [last, chg, pct, vol] = tr.querySelectorAll('.num');
+    watchRows[t.sym] = { tr, lamp: tr.querySelector('.lamp'), last, chg, pct, vol };
+  }
+
+  function updateWatch(t, ticked) {
+    const r = watchRows[t.sym];
+    const d = Market.day(t);
+    r.last.textContent = fmt(t.last);
+    r.chg.textContent = signed(d.chg);
+    r.pct.textContent = signed(d.pct) + '%';
+    r.chg.className = r.pct.className = 'num ' + (d.chg >= 0 ? 'up' : 'dn');
+    r.vol.textContent = fmtVol(d.vol);
+    if (ticked && t.last !== t.prevLast) {
+      const up = t.last > t.prevLast;
+      flash(r.last, up);
+      lamp(r.lamp, up);
+    }
+  }
+
+  // ---------------- orderboek ----------------
+  function mkBookRow(side) {
+    const el = document.createElement('div');
+    el.className = 'brow ' + side;
+    el.innerHTML = '<div class="depth"></div><i class="lamp"></i><span class="px"></span><span class="sz"></span><span class="cum"></span>';
+    return { el, depth: el.children[0], lamp: el.children[1], px: el.children[2], sz: el.children[3], cum: el.children[4] };
+  }
+  const askRows = [], bidRows = [];
+  for (let i = 0; i < DEPTH; i++) { askRows.push(mkBookRow('ask')); bidRows.push(mkBookRow('bid')); }
+  for (let i = DEPTH - 1; i >= 0; i--) $('#asks').appendChild(askRows[i].el); // verste ask bovenaan
+  bidRows.forEach(r => $('#bids').appendChild(r.el));
+  askRows[0].el.classList.add('best');
+  bidRows[0].el.classList.add('best');
+
+  function renderBook(t) {
+    const b = book.update(t);
+    const maxCum = Math.max(b.totalAsk, b.totalBid);
+    const paint = (rows, levels) => levels.forEach((lv, i) => {
+      const r = rows[i];
+      r.px.textContent = fmt(lv.price);
+      r.sz.textContent = lv.size.toLocaleString('en-US');
+      r.cum.textContent = fmtVol(lv.cum);
+      r.depth.style.width = (lv.cum / maxCum * 100).toFixed(1) + '%';
+      if (lv.dir) {
+        lamp(r.lamp, lv.dir > 0);
+        flash(r.sz, lv.dir > 0);
+      }
+    });
+    paint(askRows, b.asks);
+    paint(bidRows, b.bids);
+    $('#spread').innerHTML = `<span>SPREAD ${fmt(b.spread)} (${(b.spread / b.mid * 1e4).toFixed(1)} bp)</span><span>MID ${fmt(b.mid, 3)}</span>`;
+    $('#imbFill').style.width = (b.totalBid / (b.totalBid + b.totalAsk) * 100).toFixed(1) + '%';
+  }
+
+  // ---------------- time & sales ----------------
+  let tradeCount = 0;
+  function addTrade(t) {
+    const tr = t.trade;
+    if (!tr) return;
+    const big = tr.size >= t.avgVol / 2;
+    const row = document.createElement('div');
+    row.className = `trow new ${tr.side === 'B' ? 'buy' : 'sell'}${big ? ' big' : ''}`;
+    row.innerHTML = `<span>${hms(tr.time)}</span><span>${fmt(tr.px)}</span><span>${tr.size.toLocaleString('en-US')}</span>`
+      + `<i class="lamp ${tr.side === 'B' ? 'on-g' : 'on-r'}"></i>`;
+    const box = $('#trades');
+    box.prepend(row);
+    while (box.children.length > 80) box.lastChild.remove();
+    $('#tradeCount').textContent = `${++tradeCount} TRADES`;
+  }
+
+  // ---------------- koptekst / quote ----------------
+  function renderQuote(t, ticked) {
+    const d = Market.day(t);
+    $('#qSym').textContent = `${t.sym} ${t.exch} Equity`;
+    $('#qName').textContent = t.name;
+    const last = $('#qLast');
+    last.textContent = `${fmt(t.last)} ${t.cur}`;
+    if (ticked && t.last !== t.prevLast) flash(last, t.last > t.prevLast);
+    const chg = $('#qChg');
+    chg.textContent = `${signed(d.chg)}  ${signed(d.pct)}%`;
+    chg.className = 'q-chg ' + (d.chg >= 0 ? 'up' : 'dn');
+    $('#qTf').textContent = `${TF_LABEL[state.tf]} · SCROLL = ZOOM · SLEEP = PAN · DUBBELKLIK = RESET`;
+  }
+
+  function renderChart() {
+    const t = Market.get(state.sym);
+    chart.setData(Market.aggregate(t.bars, state.tf), state.tf);
+  }
+
+  function renderAnalysis() {
+    const t = Market.get(state.sym);
+    const a = Analysis.compute(t, Market.aggregate(t.bars, state.tf));
+    Analysis.render($('#analysis'), t, a);
+    $('#analTf').textContent = `${t.sym} · ${TF_LABEL[state.tf]}`;
+  }
+
+  // ---------------- ticker tape ----------------
+  function renderTape() {
+    const html = Market.list.map(t => {
+      const d = Market.day(t);
+      return `<span class="ti" data-sym="${t.sym}"><b>${t.sym}</b>${fmt(t.last)} <span class="${d.pct >= 0 ? 'up' : 'dn'}">${d.pct >= 0 ? '▲' : '▼'}${fmt(Math.abs(d.pct))}%</span></span>`;
+    }).join('');
+    $('#tape').innerHTML = html + html; // dubbel voor naadloze loop
+  }
+  $('#tape').addEventListener('click', e => {
+    const el = e.target.closest('.ti');
+    if (el) select(el.dataset.sym);
+  });
+
+  // ---------------- nieuws (gesimuleerd) ----------------
+  const BANKS = ['GOLDMAN', 'MORGAN STANLEY', 'JPMORGAN', 'ABN AMRO', 'ING', 'KEPLER', 'DEGROOF PETERCAM', 'BARCLAYS', 'UBS'];
+  const pick = a => a[Math.floor(Math.random() * a.length)];
+  const NEWS = [
+    t => [`${pick(BANKS)} VERHOOGT KOERSDOEL ${t.sym} NAAR ${fmt(t.last * (1.1 + Math.random() * 0.2), 0)}`, false],
+    t => [`${pick(BANKS)} VERLAAGT ${t.sym} NAAR 'HOLD'; KOERSDOEL ${fmt(t.last * (0.95 + Math.random() * 0.1), 0)}`, false],
+    t => [`*${t.name} BLOKTRANSACTIE: ${fmtVol(t.avgVol * (5 + Math.random() * 20))} STUKS @ ${fmt(t.last)}`, true],
+    t => [`OPTIES: ONGEBRUIKELIJKE CALL-ACTIVITEIT IN ${t.sym}`, false],
+    t => [`*${t.sym} CEO: VRAAG BLIJFT 'ROBUUST' IN ${pick(['EUROPA', 'AZIË', 'VS'])}`, true],
+    t => [`${t.sym} ${Market.day(t).pct >= 0 ? 'STIJGT' : 'DAALT'} ${fmt(Math.abs(Market.day(t).pct))}% IN ACTIEVE HANDEL`, false],
+    t => [`*${t.name} KONDIGT AANDELENINKOOP AAN VAN ${fmt(t.mcap * 0.01, 1)} MLD ${t.cur}`, true],
+    t => [`SHORT INTEREST IN ${t.sym} STIJGT NAAR ${fmt(2 + Math.random() * 6, 1)}% VAN FREE FLOAT`, false],
+    () => [`*FED-FUNCTIONARIS: RENTEPAD BLIJFT 'DATAAFHANKELIJK'`, true],
+    () => [`ECB LAAT DEPOSITORENTE ONGEWIJZIGD, MARKT REAGEERT KALM`, false],
+    () => [`OLIE (BRENT) ${Math.random() < 0.5 ? '+' : '-'}${fmt(Math.random() * 2)}% NA VOORRAADCIJFERS`, false],
+  ];
+  function addNews(fresh = true) {
+    const t = pick(Market.list);
+    const [head, hot] = pick(NEWS)(t);
+    const el = document.createElement('div');
+    el.className = `news-item${fresh ? ' fresh' : ''}${hot ? ' hot' : ''}`;
+    el.innerHTML = `<span class="t">${hms(Date.now())}</span><span class="s">${t.sym}</span><span class="h">${head}</span>`;
+    el.addEventListener('click', () => select(t.sym));
+    const box = $('#news');
+    box.prepend(el);
+    while (box.children.length > 60) box.lastChild.remove();
+  }
+  for (let i = 0; i < 10; i++) addNews(false);
+  (function scheduleNews() {
+    setTimeout(() => { addNews(); scheduleNews(); }, 4000 + Math.random() * 8000);
+  })();
+
+  // ---------------- klokken ----------------
+  const ZONES = [['NY', 'America/New_York'], ['LDN', 'Europe/London'], ['AMS', 'Europe/Amsterdam'], ['TKY', 'Asia/Tokyo']];
+  function renderClocks() {
+    const now = new Date();
+    $('#clocks').innerHTML = ZONES.map(([lbl, tz]) =>
+      `<span><b>${lbl}</b>${now.toLocaleTimeString('nl-NL', { timeZone: tz, hour12: false })}</span>`).join('');
+    $('#latency').textContent = `LAT ${2 + Math.floor(Math.random() * 7)}ms`;
+  }
+
+  // ---------------- selectie & commando's ----------------
+  function select(sym) {
+    const t = Market.get(sym);
+    if (!t) return false;
+    watchRows[state.sym].tr.classList.remove('sel');
+    state.sym = sym;
+    watchRows[sym].tr.classList.add('sel');
+    $('#bookSym').textContent = `${sym} ${t.exch} · TICK ${t.tick}`;
+    $('#trades').innerHTML = '';
+    tradeCount = 0;
+    $('#tradeCount').textContent = '';
+    chart.offset = 0;
+    renderQuote(t, false);
+    renderChart();
+    renderBook(t);
+    renderAnalysis();
+    status(`${t.sym} ${t.exch} Equity — ${t.name} geladen`, 'ok');
+    return true;
+  }
+
+  function setTf(tf) {
+    state.tf = tf;
+    document.querySelectorAll('[data-tf]').forEach(b => b.classList.toggle('active', +b.dataset.tf === tf));
+    renderChart();
+    renderAnalysis();
+    renderQuote(Market.get(state.sym), false);
+  }
+
+  function setLower(v) {
+    chart.lower = v;
+    document.querySelectorAll('[data-lower]').forEach(b => b.classList.toggle('active', b.dataset.lower === v));
+    chart.draw();
+  }
+
+  function toggleOverlay(k) {
+    chart.overlays[k] = !chart.overlays[k];
+    document.querySelector(`[data-ov="${k}"]`).classList.toggle('active', chart.overlays[k]);
+    chart.draw();
+  }
+
+  document.querySelectorAll('[data-tf]').forEach(b => b.addEventListener('click', () => setTf(+b.dataset.tf)));
+  document.querySelectorAll('[data-lower]').forEach(b => b.addEventListener('click', () => setLower(b.dataset.lower)));
+  document.querySelectorAll('[data-ov]').forEach(b => b.addEventListener('click', () => toggleOverlay(b.dataset.ov)));
+
+  const HELP = 'TICKER (bv. NVDA, ASML) · 1M 5M 15M 1H · RSI MACD GEEN · SMA20 SMA50 EMA9 BOLL · ↑/↓ door watchlist · ESC wist';
+  const OV = { SMA20: 'sma20', SMA50: 'sma50', EMA9: 'ema9', BOLL: 'bb', BB: 'bb' };
+  const TFS = { '1M': 1, '5M': 5, '15M': 15, '1H': 60 };
+
+  function runCommand(raw) {
+    const words = raw.trim().toUpperCase().split(/\s+/).filter(Boolean);
+    if (!words.length) return;
+    for (const w of words) {
+      if (w === 'EQUITY' || w === 'US' || w === 'NA' || w === 'GO' || w === 'GP') continue;
+      if (Market.get(w)) select(w);
+      else if (TFS[w]) setTf(TFS[w]);
+      else if (w === 'RSI' || w === 'MACD') setLower(w);
+      else if (w === 'GEEN' || w === 'NONE') setLower('NONE');
+      else if (OV[w]) toggleOverlay(OV[w]);
+      else if (w === 'HELP' || w === '?') status(HELP);
+      else { status(`ONBEKEND COMMANDO: ${w} — typ HELP`, 'err'); return; }
+    }
+  }
+
+  const input = $('#cmdInput');
+  $('#cmd').addEventListener('submit', e => {
+    e.preventDefault();
+    runCommand(input.value);
+    input.value = '';
+  });
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { input.value = ''; input.blur(); return; }
+    if (document.activeElement !== input && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
+      e.preventDefault();
+      const syms = Market.list.map(t => t.sym);
+      const i = syms.indexOf(state.sym) + (e.key === 'ArrowDown' ? 1 : -1);
+      select(syms[(i + syms.length) % syms.length]);
+      watchRows[state.sym].tr.scrollIntoView({ block: 'nearest' });
+      return;
+    }
+    // begin met typen waar je ook bent → commandoregel krijgt focus
+    if (document.activeElement !== input && /^[a-z0-9?]$/i.test(e.key) && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      input.focus();
+    }
+  });
+
+  // ---------------- live feed ----------------
+  let lastSlow = 0;
+  Market.onTick((changed, newBar) => {
+    const changedSet = new Set(changed);
+    for (const t of Market.list) updateWatch(t, changedSet.has(t));
+
+    const t = Market.get(state.sym);
+    renderQuote(t, changedSet.has(t));
+    renderBook(t);
+    if (changedSet.has(t)) addTrade(t);
+    if (changedSet.has(t) || newBar) renderChart();
+
+    const now = Date.now();
+    if (now - lastSlow > 1000) {
+      lastSlow = now;
+      renderAnalysis();
+      renderTape();
+    }
+  });
+
+  renderTape();
+  renderClocks();
+  setInterval(renderClocks, 1000);
+  Market.list.forEach(t => updateWatch(t, false));
+  select(state.sym);
+  status('Welkom. Typ een ticker (bv. <b>NVDA</b>) en druk op Enter, of typ <b>HELP</b>. Alle data is gesimuleerd.');
+  Market.start();
+})();
+  </script>
+</body>
+</html>

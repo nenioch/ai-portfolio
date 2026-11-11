@@ -19,9 +19,13 @@
   main {
     display:grid; gap:var(--gap); padding:0 16px 16px;
     grid-template-columns:repeat(4,1fr);
-    grid-template-rows:repeat(3,1fr);
-    height:calc(100vh - var(--head));
-    min-height:600px;
+    /* tegelhoogte blijft gelijk aan die van de oorspronkelijke 12 tegels (3 rijen op een scherm); extra rijen scrollen eronder */
+    grid-template-rows:none;
+    /* nooit hoger dan de breedte-verhouding (1,42:1) van de oorspronkelijke tegels, nooit meer dan 3 rijen per scherm */
+    grid-auto-rows:max(240px, min(
+      calc((100vh - var(--head) - 16px - 2 * var(--gap)) / 3),
+      calc((100vw - 32px - 3 * var(--gap)) / 4 / 1.42)
+    ));
     overflow:clip; /* de hover-zoom van tegels aan de rand mag geen scrollbalken veroorzaken */
   }
   a.card {
@@ -29,6 +33,7 @@
     color:inherit; text-decoration:none; background:#000; min-height:0;
     transition:transform .2s ease, box-shadow .2s ease; z-index:0;
   }
+  a.card:nth-child(n+13) { top:16px; } /* vierde rij net buiten beeld: eerste scherm toont precies 12 tegels */
   a.card:hover, a.card:focus-visible {
     transform:scale(1.03); z-index:2; outline:2px solid var(--accent);
     box-shadow:0 14px 40px rgba(0,0,0,.7);
@@ -115,6 +120,22 @@
     <div class="thumb"><img src="thumbs/bloomberg-terminal.jpg" alt="Market Terminal" loading="lazy"></div>
     <div class="info"><span class="tag" data-t>Dashboard</span><h2 data-h>Market Terminal</h2><p data-d>Gesimuleerde beursterminal in Bloomberg-stijl.</p></div>
   </a>
+  <a class="card" data-k="llm" href="llm-geschiedenis/index.html">
+    <div class="thumb"><img src="thumbs/llm-geschiedenis.jpg" alt="Hoe computers leerden praten" loading="lazy"></div>
+    <div class="info"><span class="tag" data-t>Animatie</span><h2 data-h>Hoe computers leerden praten</h2><p data-d>De geschiedenis van taalmodellen: van de transformer tot AI-wiskunde en de Hugging Face-hack.</p></div>
+  </a>
+  <a class="card" data-k="inkt" href="inktkunst/index.html">
+    <div class="thumb"><img src="thumbs/inktkunst.jpg" alt="Inktkunst" loading="lazy"></div>
+    <div class="info"><span class="tag" data-t>Simulatie</span><h2 data-h>Inktkunst</h2><p data-d>Realtime vloeistofsimulatie: inkt, marmer en olie die wervelt.</p></div>
+  </a>
+  <a class="card" data-k="oceaan" href="oceaanstromen/index.html">
+    <div class="thumb"><img src="thumbs/oceaanstromen.jpg" alt="Oceaanstromen" loading="lazy"></div>
+    <div class="info"><span class="tag" data-t>Datavisualisatie</span><h2 data-h>Oceaanstromen</h2><p data-d>De echte oppervlaktestroming van alle oceanen, als lichtsporen over de aarde.</p></div>
+  </a>
+  <a class="card" data-k="hoellental" href="hoellentalklamm/index.html">
+    <div class="thumb"><img src="thumbs/hoellentalklamm.jpg" alt="Höllentalklamm" loading="lazy"></div>
+    <div class="info"><span class="tag" data-t>Animatie</span><h2 data-h>Höllentalklamm</h2><p data-d>Een wandeling door de Höllentalklamm, van Hammersbach tot de Höllentalangerhütte.</p></div>
+  </a>
 </main>
 
 <footer>Elk project is een zelfstandige map met eigen index.html.</footer>
@@ -124,12 +145,12 @@
     nl: {
       sub: 'Games, simulaties en presentaties, gebouwd met AI. Klik op een plaatje om te openen.',
       light: 'Licht', dark: 'Donker', other: 'EN',
-      tags: { game:'Game', anim:'Animatie', pres:'Presentatie', stad:'3D-stad', strat:'Strategie', dash:'Dashboard' }
+      tags: { game:'Game', anim:'Animatie', pres:'Presentatie', stad:'3D-stad', strat:'Strategie', dash:'Dashboard', sim:'Simulatie', proc:'Procedureel', data:'Datavisualisatie', uitleg:'Uitleg' }
     },
     en: {
       sub: 'Games, simulations and presentations, built with AI. Click a picture to open it.',
       light: 'Light', dark: 'Dark', other: 'NL',
-      tags: { game:'Game', anim:'Animation', pres:'Presentation', stad:'3D city', strat:'Strategy', dash:'Dashboard' }
+      tags: { game:'Game', anim:'Animation', pres:'Presentation', stad:'3D city', strat:'Strategy', dash:'Dashboard', sim:'Simulation', proc:'Procedural', data:'Data visualisation', uitleg:'Explainer' }
     }
   };
   var C = {
@@ -140,11 +161,15 @@
     maan:       { t:'strat', nl:['Maanbasis','Geen geld, alleen steen: bouw met robots een basis op de maan.'], en:['Moon Base','No money, only rock: build a moon base with robots.'] },
     kloof:      { t:'game',  nl:['Kloofracer','Race met een jetboot door een bergkloof.'], en:['Canyon Racer','Race a jet boat through a mountain canyon.'] },
     aigesch:    { t:'anim',  nl:['Geschiedenis van AI','Van tandwiel tot taalmodel.'], en:['History of AI','From cogwheel to language model.'] },
-    stef:       { t:'pres',  nl:['OpenSTEF','Presentatie over OpenSTEF.'], en:['OpenSTEF','Presentation about OpenSTEF.'] },
+    llm:        { t:'anim', nl:['Hoe computers leerden praten','De geschiedenis van taalmodellen: van de transformer tot AI-wiskunde en de Hugging Face-hack.'], en:['How Computers Learned to Talk','The history of language models: from the transformer to AI maths and the Hugging Face hack.'] },
+    stef:       { t:'pres', nl:['OpenSTEF','Presentatie over OpenSTEF.'], en:['OpenSTEF','Presentation about OpenSTEF.'] },
     airev:      { t:'anim',  nl:['The AI Revolution','Geanimeerde samenvatting van het Wait But Why-artikel over superintelligentie.'], en:['The AI Revolution','Animated summary of the Wait But Why article on superintelligence.'] },
     brave:      { t:'strat', nl:['Brave New Worlds','Kolonisatie van een nieuwe planeet.'], en:['Brave New Worlds','Colonize a new planet.'] },
     humanoid:   { t:'anim',  nl:['Humanoids Showreel','Humanoïde robots in verschillende scènes.'], en:['Humanoids Showreel','Humanoid robots in different scenes.'] },
-    bloomberg:  { t:'dash',  nl:['Market Terminal','Gesimuleerde beursterminal in Bloomberg-stijl.'], en:['Market Terminal','Simulated Bloomberg-style market terminal.'] }
+    bloomberg:  { t:'dash',  nl:['Market Terminal','Gesimuleerde beursterminal in Bloomberg-stijl.'], en:['Market Terminal','Simulated Bloomberg-style market terminal.'] },
+    inkt:       { t:'sim',   nl:['Inktkunst','Realtime vloeistofsimulatie: inkt, marmer en olie die wervelt.'], en:['Ink Art','Real-time fluid simulation: swirling ink, marbling and oil.'] },
+    oceaan:     { t:'data',  nl:['Oceaanstromen','De echte oppervlaktestroming van alle oceanen, als lichtsporen over de aarde.'], en:['Ocean Currents','The real surface currents of every ocean, as light trails across the Earth.'] },
+    hoellental: { t:'anim',  nl:['Höllentalklamm','Een wandeling door de Höllentalklamm, van Hammersbach tot de Höllentalangerhütte.'], en:['Höllentalklamm','A walk through the Höllentalklamm gorge, from Hammersbach to the Höllentalangerhütte.'] }
   };
   var ICON = { sun: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></svg>', moon: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 14.5A8.5 8.5 0 0 1 9.5 3.5a8.5 8.5 0 1 0 11 11z"/></svg>' };
   var root = document.documentElement;

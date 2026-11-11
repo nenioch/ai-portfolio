@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Inktkunst</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body class="theme-water">
+
+<canvas id="scene" aria-label="Realtime vloeistofsimulatie: gekleurde inkt die door water wervelt"></canvas>
+
+<div id="title" class="overlay">
+  <span id="title-idx">01 / 04</span>
+  <h1 id="title-h"></h1>
+  <p id="title-p"></p>
+</div>
+
+<div id="stats" class="overlay"><span id="res"></span> · <span id="fps">--</span> fps</div>
+
+<div id="dock" class="panel">
+  <button id="auto" class="on" title="Showreel aan/uit (A)">&#9654; Showreel</button>
+  <span class="sep"></span>
+  <div id="scenes"></div>
+  <span class="sep"></span>
+  <button id="clear" title="Doek schoonmaken (spatie)">Wis</button>
+  <button id="save" title="Bewaar als afbeelding (S)">Bewaar</button>
+</div>
+
+<div id="hint" class="overlay">Beweeg de muis om te roeren (de showreel wacht dan even) · sleep voor meer kracht · klik voor een inktplons · spatie: wissen · S: opslaan · A: showreel · H: verberg</div>
+<div id="error" hidden>Deze animatie heeft WebGL2 met float-textures nodig. Probeer een recente Chrome, Edge of Firefox.</div>
+
+<script src="main.js"></script>
+</body>
+</html>
